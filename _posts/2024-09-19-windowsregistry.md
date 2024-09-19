@@ -3,11 +3,11 @@ title: "Windows Registry Forensics"
 date: 2024-09-19 18:00:00 +0800
 categories: [General]
 tags: [Forensics]
-description: My Presentation Slides for "Introduction to Windows Registry Forensics" Session in 1337 Khouribga school
+description: My Presentation Slides for "Introduction to Windows Registry Forensics" Session at 1337 Khouribga school
 image: ../images/session/1.png
 ---
 
-The Slides i used for explaining basic Windows Registry Forensics for 1337 khouribga student
+The Slides I used for explaining basic Windows Registry Forensics for 1337 Khouribga student
 
 ![](../images/session/20.png)
 
