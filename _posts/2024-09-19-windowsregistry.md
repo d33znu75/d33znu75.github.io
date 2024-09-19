@@ -1,11 +1,13 @@
 ---
 title: "Windows Registry Forensics"
-date: 2024-07-07 12:00:00 +0800
-categories: [CTF Write ups]
-tags: [Forensics, Malware]
+date: 2024-09-19 18:00:00 +0800
+categories: [General]
+tags: [Forensics]
 description: Slides i used for Windows Registry Forensics in 1337 Khouribga school
-image: ../images/session/20.png
+image: ../images/session/1.png
 ---
+
+The Slides i used for explaining basic Windows Registry Forensics for 1337 khouribga student
 
 ![](../images/session/20.png)
 
