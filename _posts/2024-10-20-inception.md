@@ -36,7 +36,7 @@ After decoding the Base64 text, we obtained a script (which is a reverse shell s
 
 ![](../images/odyssey/6.png)
 
-"65 75 65 83 69 67 123 55 104 51 95" -> "AKASEC{7h3_"
+"65 75 65 83 69 67 123 55 104 51 95" -> `AKASEC{7h3_`
 
 ### The second part of the flag
 
@@ -44,11 +44,11 @@ Now that we have the first part, we still need to find the other two.
 
 Next, we examined the main folder of WordPress. The index.php file refers us to free_items.php. The website displays the text: "Congrats! You Won a free Arduino! Click On The Image To See More Details," and clicking the image downloads an executable (which is malware).
 
-Analyzing the code, we noticed obfuscated JavaScript. In the array of strings, we found a hex string containing the second part of the flag:
+Analyzing the website source code, we noticed obfuscated JavaScript. In the array of strings, we found a hex string containing the second part of the flag:
 
 ![](../images/odyssey/7.png)
 
-"3472375f30665f6326635f" -> "4r7_0f_c&c_"
+"3472375f30665f6326635f" -> `4r7_0f_c&c_`
 
 ### The third part of the flag
 
@@ -60,7 +60,7 @@ The JavaScript also contains a Base64 text of the executable, so we retrieved th
 
 ![](../images/odyssey/9.png)
 
-The malware is a PE32+ executable written in Python. To reverse it and see the source code, I used pyinstxtractor.py to extract the contents of this PyInstaller-generated executable file.
+The malware is a PE32+ executable written in Python. To reverse it and see the source code, I used [pyinstxtractor.py](https://github.com/extremecoders-re/pyinstxtractor) to extract the contents of this PyInstaller-generated executable file.
 
 ![](../images/odyssey/10.png)
 
@@ -176,7 +176,7 @@ Next, we needed to change the output of the packets from ASCII to RAW.
 
 ![](../images/odyssey/12.png)
 
-This is the Python script I created to decrypt the traffic.
+This is the Python script I created to decrypt the traffic based on the script that encrypted them.
 
 ```py
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
