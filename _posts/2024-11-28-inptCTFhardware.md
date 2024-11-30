@@ -87,15 +87,29 @@ In this case, the hacker used a deauthentication attack, which forces a device t
 Now, we have a capture file from the club's Wi-Fi network (AKASEC-WiFi). Let's proceed by cracking the handshake and retrieving the Wi-Fi password.
 
 
-We will use aircrack-ng, a tool that includes several utilities for assessing Wi-Fi network security, with the ability to crack WEP and WPA PSK passwords. We will provide it with a wordlist to check passwords against; in this case, we'll use the famous wordlist, Rockyou.txt
+We will use aircrack-ng, a tool that includes several utilities for assessing Wi-Fi network security, with the ability to crack WEP and WPA PSK passwords.
+
+First, let's gather the network information by running this command in the terminal.
+
+```shell
+aircrack-ng akasec-01.cap
+```
+
+![](../images/dibit/aircrack.png)
+
+#### And the answer to question 1 in this task "What is the BSSID of the router?" is: `EC:8A:4C:A9:10:9C`
+
+We will provide it with a wordlist to check passwords against; in this case, we'll use the famous wordlist, Rockyou.txt
 
 ```shell
 aircrack-ng akasec-01.cap -w ./rockyou.txt
 ```
 
+![](../images/dibit/crack.png)
+
 In less than a minute, we can obtain the Wi-Fi password, which is `donthackme`.
 
-![](../images/dibit/crack.png)
+#### And the answer to question 2 in this task "What is the password of the router?" is: `donthackme`
 
 Now that we have the password, let's decrypt the traffic using the SSID and password.
 Open the .cap file in Wireshark and go to Edit → Preferences → Protocols → IEEE 802.11
