@@ -135,3 +135,5 @@ To export all the images from the HTTP protocol Go to File → Export Objects �
 FLAG : `AKASEC{UNSECURE_SERVER_CAN_LEAD_TO_CCTV_HACK}`
 
 The main vulnerability in this scenario is the importance of using a strong password for your Wi-Fi network. If your Wi-Fi is connected to sensitive devices, such as CCTV cameras, attackers could potentially access these devices—even if the camera's dashboard has authentication in place. This is because, if an attacker gains access to your network, they may be able to bypass other security measures. Additionally, many security cameras still use the outdated HTTP protocol to send video streams, which is insecure because it does not encrypt the data. This makes it possible for attackers to intercept the video feed and gain access to potentially sensitive footage.
+
+
