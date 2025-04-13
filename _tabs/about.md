@@ -7,9 +7,10 @@ order: 4
 <h1 align="left">$echo "Hello World"</h1>
 
 <br>
-<p align="left">My name is Reda, I'm Cybersecurity Researcher, Blue Teamer</p>
+<p align="left">I'm Cybersecurity Researcher & Analyst</p>
+<p align="left">I love making computer goes brr with my goofy ahh scripts</p>
 
-<p align="left">📚 Computer Science Student at 1337 School<br>🕵🏻‍♂️ CTF Player and Organizer<br> 👨🏻‍💻 AKASEC Cybersecurity Club Member<br>🎯 Goals: becoming insane</p>
+<p align="left">I'm a CTF Player and Organizer, in this blog you will see a lot of CTFs writeups i keep them here<br></p>
 
-<p align="left">I primarily do Forensics, analyzing artifacts, malwares and recovering data.</p>
+<p align="left">the professionalization of the internet is a disaster for creativity. Make the internet weird again</p>
 
