@@ -7,11 +7,11 @@ description: This is the write-up on the hardware and IoT security challenges th
 image: ../images/dibit/banner.png
 ---
 
-#### Warning: The following scenario is entirely fictional and part of a Hardware/IoT security CTF (Capture The Flag) challenge. Any references to individuals, organizations, or events, including the character "Youssra" attempting to hack a club named "Akasec Club," are purely hypothetical and created for educational purposes. This scenario is designed to simulate a security challenge and is not meant to encourage or condone illegal activities. The goal of this challenge is to enhance skills in ethical hacking, security research, and system protection. Hacking, unauthorized access to systems, and other cybercrimes are illegal and unethical. Always respect the law and act responsibly online.
+#### Warning: The following scenario is entirely fictional and part of a Hardware/IoT security CTF (Capture The Flag) challenge. Any references to individuals, organizations, or events, including the character "Neon" attempting to hack a club named "Akasec Club," are purely hypothetical and created for educational purposes. This scenario is designed to simulate a security challenge and is not meant to encourage or condone illegal activities. The goal of this challenge is to enhance skills in ethical hacking, security research, and system protection. Hacking, unauthorized access to systems, and other cybercrimes are illegal and unethical. Always respect the law and act responsibly online.
 
 ## The Scenario :
 
-Youssra, a cybersecurity enthusiast, wants to test the security of the Akasec Club at her school. The club's infrastructure is vulnerable, as they've made several security mistakes. Your task is to assist Youssra in gathering as much data as possible so she can report the vulnerabilities to the club and further enhance her hacking skills.V
+Neon, a cybersecurity enthusiast, wants to test the security of the Akasec Club at her school. The club's infrastructure is vulnerable, as they've made several security mistakes. Your task is to assist Neon in gathering as much data as possible so she can report the vulnerabilities to the club and further enhance her hacking skills.V
 
 ## First Task : Get the Hidden Data in the MIFARE CLASSIC 1K KEY
 
