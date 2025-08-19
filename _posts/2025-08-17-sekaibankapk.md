@@ -85,9 +85,8 @@ Below is a Python script that reproduces the signing process and performs the re
 ```python
 import hmac
 import hashlib
-import binascii
 import json
-import requests
+import binascii
 
 hex_fingerprint = "3F3CF8830ACC96530D5564317FE480AB581DFC55EC8FE55E67DDDBE1FDB605BE"
 key_bytes = binascii.unhexlify(hex_fingerprint)
@@ -98,19 +97,9 @@ body_dict = {"unmask_flag": True}
 body = json.dumps(body_dict, separators=(",", ":"))
 data_to_sign = method + "/api" + endpoint_path + body
 
-signature = hmac.new(key_bytes, data_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
-signature = signature.lower()
+signature = hmac.new(key_bytes, data_to_sign.encode("utf-8"), hashlib.sha256).hexdigest() # compute HMAC-SHA256 signatu>signature = signature.lower()
 
-url = "https://sekaibank-api.chals.sekai.team/api/flag"
-bearer_token = "<REDACTED_BEARER_TOKEN>"  # replace with a real token obtained from the app
-headers = {
-    "Authorization": f"Bearer {bearer_token}",
-    "X-Signature": signature,
-    "Content-Type": "application/json",
-}
-
-response = requests.post(url, headers=headers, data=body)
-print(response.text)
+print(f"X-Signature: {signature}")
 ```
 
 Output:
@@ -163,3 +152,4 @@ print(response.text)
 ```
 
 Happy reversing!
+
