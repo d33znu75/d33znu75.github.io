@@ -4,37 +4,37 @@ date: 2024-10-20 18:00:00 +0800
 categories: [CTF Write ups]
 tags: [Forensics, Malware, Reverse Engineering]
 description: Write Up of the Inception Challenge in Cyber Odyssey 2024 Qualifications
-image: ../images/odyssey/odyssey.png
+image: /images/odyssey/odyssey.png
 ---
 # Inception Write Up
 
-![](../images/odyssey/0.png)
+![](/images/odyssey/0.png)
 
 In this challenge, we have two files: a Linux server file system and a Wireshark network capture file.
 
-![](../images/odyssey/1.png)
+![](/images/odyssey/1.png)
 
 Analyzing the file system, we found the website hosted on this server at /srv/www/. It is a WordPress website.
 
-![](../images/odyssey/2.png)
+![](/images/odyssey/2.png)
 
 ### The first part of the flag
 
 In the WordPress files, specifically in the plugins folder (/srv/www/wp-content/plugins), we found two plugins.
 
-![](../images/odyssey/3.png)
+![](/images/odyssey/3.png)
 
 The plugin-manager contains a single PHP file, which is unusual. In the plugin-manager.php code, we discovered a Pastebin link. 
 
-![](../images/odyssey/4.png)
+![](/images/odyssey/4.png)
 
 Essentially, the script retrieves data from that Pastebin, decodes it from Base64, and executes it.
 
-![](../images/odyssey/5.png)
+![](/images/odyssey/5.png)
 
 After decoding the Base64 text, we obtained a script (which is a reverse shell script). Within this script, we found a variable ($secpart) that holds the first part of the flag in decimal:
 
-![](../images/odyssey/6.png)
+![](/images/odyssey/6.png)
 
 "65 75 65 83 69 67 123 55 104 51 95" -> `AKASEC{7h3_`
 
@@ -46,7 +46,7 @@ Next, we examined the main folder of WordPress. The index.php file refers us to 
 
 Analyzing the website source code, we noticed obfuscated JavaScript. In the array of strings, we found a hex string containing the second part of the flag:
 
-![](../images/odyssey/7.png)
+![](/images/odyssey/7.png)
 
 "3472375f30665f6326635f" -> `4r7_0f_c&c_`
 
@@ -56,13 +56,13 @@ The JavaScript also contains a Base64 text of the executable, so we retrieved th
 
 #### Static Analysis of the Malware
 
-![](../images/odyssey/8.png)
+![](/images/odyssey/8.png)
 
-![](../images/odyssey/9.png)
+![](/images/odyssey/9.png)
 
 The malware is a PE32+ executable written in Python. To reverse it and see the source code, I used [pyinstxtractor.py](https://github.com/extremecoders-re/pyinstxtractor) to extract the contents of this PyInstaller-generated executable file.
 
-![](../images/odyssey/10.png)
+![](/images/odyssey/10.png)
 
 Once extracted, we decompiled the main file (client.pyc). It contained obfuscated Python code that establishes a connection to a remote server using port 1337 to receive and execute commands sent by the server. These commands are encrypted using AES and XOR.
 
@@ -170,11 +170,11 @@ Now that we have the network capture file, we can analyze the commands executed 
 
 We filtered the TCP protocol by port 1337 and followed the stream. The data in red represents the client commands sent to the server (the victim computer), while the blue data shows the output of those commands.
 
-![](../images/odyssey/11.png)
+![](/images/odyssey/11.png)
 
 Next, we needed to change the output of the packets from ASCII to RAW.
 
-![](../images/odyssey/12.png)
+![](/images/odyssey/12.png)
 
 This is the Python script I created to decrypt the traffic based on the script that encrypted them.
 
@@ -207,7 +207,7 @@ print(a)
 
 When decrypting the traffic, we found that one of the commands sent to the server contained the last part of the flag.
 
-![](../images/odyssey/13.png)
+![](/images/odyssey/13.png)
 
 Flag : `AKASEC{7h3_4r7_0f_c&c_15_m1nd_bl0w1n6}`
 

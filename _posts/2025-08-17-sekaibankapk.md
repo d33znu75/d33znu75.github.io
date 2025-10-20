@@ -4,7 +4,7 @@ date: 2025-08-17 22:00:00 +0800
 categories: [CTF Write-ups]
 tags: [Reverse Engineering]
 description: Write Up of the APK Reverse Engineering challenge in SekaiCTF 2025
-image: ../images/sekai2025/1.png
+image: /images/sekai2025/1.png
 ---
 
 
@@ -16,11 +16,11 @@ This write-up covers an APK reverse-engineering challenge from SekaiCTF 2025. Th
 
 After installing the app, I found a login screen requiring a username and password, with a registration option.
 
-![](../images/sekai2025/2.png)
+![](/images/sekai2025/2.png)
 
 After registering, the app asks to set a PIN, then opens the main dashboard. The account starts with a $1,000 balance and has send/receive functionality.
 
-![](../images/sekai2025/3.png)
+![](/images/sekai2025/3.png)
 
 I enabled network logging to inspect the requests the app makes and observed calls to the API at:
 
@@ -28,34 +28,34 @@ I enabled network logging to inspect the requests the app makes and observed cal
 https://sekaibank-api.chals.sekai.team/api/
 ```
 
-![](../images/sekai2025/4.png)
+![](/images/sekai2025/4.png)
 
 The requests include an Authorization header (a JWT) and an `X-Signature` header.
 
-![](../images/sekai2025/5.png)
+![](/images/sekai2025/5.png)
 
 ## Decompilation
 
 I used jadx to decompile the APK and explored the app's package structure. The main activity is in `com.sekai.bank`.
 
-![](../images/sekai2025/6.png)
+![](/images/sekai2025/6.png)
 
 The networking code is under `com.sekai.bank.network`. I found an endpoint used to fetch the flag and the request model used for it.
 
-![](../images/sekai2025/7.png)
-![](../images/sekai2025/8.png)
+![](/images/sekai2025/7.png)
+![](/images/sekai2025/8.png)
 
 The flag endpoint accepts a POST to `/api/flag` with a JSON body that matches the `FlagRequest` model. The body contains a boolean `unmask_flag`, so sending `{"unmask_flag": true}` should request the unmasked flag.
 
 I attempted the request from Burp Suite, but the server rejected it with an "invalid signature" error.
 
-![](../images/sekai2025/9.png)
+![](/images/sekai2025/9.png)
 
 ## Finding the signature algorithm
 
 In `com.sekai.bank.network` there is a `SignatureInterceptor` class which adds the `X-Signature` header. The `generateSignature` method constructs a string from the HTTP method, endpoint path, and body, then uses the app's signing certificate as the HMAC key.
 
-![](../images/sekai2025/10.png)
+![](/images/sekai2025/10.png)
 
 Concretely, the flow is:
 - Build the string: METHOD + "/api" + endpoint_path + body
@@ -70,7 +70,7 @@ SHA-256 Fingerprint: 3F 3C F8 83 0A CC 96 53 0D 55 64 31 7F E4 80 AB 58 1D FC 55
 
 In Jadx you can find the Signature certificate in APK folder
 
-![](../images/sekai2025/11.png)
+![](/images/sekai2025/11.png)
 
 ## Reproducing the signature
 
@@ -110,7 +110,7 @@ X-Signature: 440ba2925730d137259f297fd6fba02af2f7b6c414dd16a1ac336e9047cdb8f5
 
 Now lets use this signature in our API request to `/api/flag` using Burp Suite.
 
-![](../images/sekai2025/12.png)
+![](/images/sekai2025/12.png)
 
 And voilà! we have successfully got the flag:
 
