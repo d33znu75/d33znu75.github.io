@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APT CTF Write Up | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>APT CTF Write Up</h1>
+            <div class="writeup-meta">
+                2025-07-05 | <span class="tag">Reverse Engineering</span><span class="tag">Malware</span>
+            </div>
+            
+            <h1 id="crackme">CrackMe!</h1>
+<p>In this challenge, I gave the participants a binary file. Upon execution, it presents a simple GUI with a text input box and a "Check" button — essentially a flag checker. The goal is to reverse-engineer the binary and recover the correct input that will produce the flag.</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/3.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="step-1-initial-binary-analysis">Step 1: Initial Binary Analysis</h3>
+<p>We begin by using the file command to inspect the binary:</p>
+<div class="codehilite"><pre><span></span><code><span class="err">$</span><span class="w"> </span><span class="k">file</span><span class="w"> </span><span class="n">CrackMe</span><span class="err">!</span>
+<span class="n">CrackMe</span><span class="err">!:</span><span class="w"> </span><span class="n">ELF</span><span class="w"> </span><span class="mi">64</span><span class="o">-</span><span class="nc">bit</span><span class="w"> </span><span class="n">LSB</span><span class="w"> </span><span class="n">executable</span><span class="p">,</span><span class="w"> </span><span class="n">x86</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="n">SYSV</span><span class="p">),</span><span class="w"> </span><span class="n">dynamically</span><span class="w"> </span><span class="n">linked</span><span class="p">,</span><span class="w"> </span><span class="n">interpreter</span><span class="w"> </span><span class="o">/</span><span class="n">lib64</span><span class="o">/</span><span class="n">ld</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">x86</span><span class="o">-</span><span class="mf">64.</span><span class="n">so</span><span class="mf">.2</span><span class="p">,</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">GNU</span><span class="o">/</span><span class="n">Linux</span><span class="w"> </span><span class="mf">3.2.0</span><span class="p">,</span><span class="w"> </span><span class="n">BuildID</span><span class="o">[</span><span class="n">sha1</span><span class="o">]=</span><span class="n">fc89f558d158bb1cc6e5e463d6fe7c536da15abb</span><span class="p">,</span><span class="w"> </span><span class="n">stripped</span>
+</code></pre></div>
+
+<p>So it’s a 64-bit ELF binary, dynamically linked, and stripped (no symbols).</p>
+<p>Next, we want to determine if it's packed and what language it was originally written in.</p>
+<h3 id="step-2-identifying-the-language-and-packer">Step 2: Identifying the Language and Packer</h3>
+<p>We use Detect It Easy (DIE) to analyze the binary:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>DIE tells us this is a Python application bundled with PyInstaller. PyInstaller packages Python applications into standalone executables, embedding the Python interpreter and required libraries.</p>
+<h3 id="step-3-extracting-the-pyinstaller-archive">Step 3: Extracting the PyInstaller Archive</h3>
+<p>To decompile the executable, we use <code>pyinstxtractor.py</code> — a Python script that extracts PyInstaller-packed binaries.</p>
+<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>python3<span class="w"> </span>pyinstxtractor.py<span class="w"> </span>CrackMe!
+
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Processing<span class="w"> </span>CrackMe!
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Pyinstaller<span class="w"> </span>version:<span class="w"> </span><span class="m">2</span>.1+
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Python<span class="w"> </span>version:<span class="w"> </span><span class="m">3</span>.12
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Length<span class="w"> </span>of<span class="w"> </span>package:<span class="w"> </span><span class="m">12277682</span><span class="w"> </span>bytes
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Found<span class="w"> </span><span class="m">365</span><span class="w"> </span>files<span class="w"> </span><span class="k">in</span><span class="w"> </span>CArchive
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Beginning<span class="w"> </span>extraction...please<span class="w"> </span>standby
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Possible<span class="w"> </span>entry<span class="w"> </span>point:<span class="w"> </span>pyiboot01_bootstrap.pyc
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Possible<span class="w"> </span>entry<span class="w"> </span>point:<span class="w"> </span>pyi_rth__tkinter.pyc
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Possible<span class="w"> </span>entry<span class="w"> </span>point:<span class="w"> </span>pyi_rth_inspect.pyc
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Possible<span class="w"> </span>entry<span class="w"> </span>point:<span class="w"> </span>check.pyc
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Found<span class="w"> </span><span class="m">104</span><span class="w"> </span>files<span class="w"> </span><span class="k">in</span><span class="w"> </span>PYZ<span class="w"> </span>archive
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Successfully<span class="w"> </span>extracted<span class="w"> </span>pyinstaller<span class="w"> </span>archive:<span class="w"> </span>CrackMe!
+</code></pre></div>
+
+<p>Among the extracted files, we find our entry point: <code>check.pyc</code></p>
+<h3 id="step-4-decompiling-the-obfuscated-python-code">Step 4: Decompiling the Obfuscated Python Code</h3>
+<p>We decompile check.pyc using <code>pylingual</code> and discover it’s obfuscated:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>The obfuscation was done using Py-Fuscate — a tool that compresses and marshals Python bytecode.</p>
+<p>To reverse it, you can manually:</p>
+<ul>
+<li>
+<p>Decompress with zlib</p>
+</li>
+<li>
+<p>Unmarshal the code with marshal</p>
+</li>
+<li>
+<p>Repeat the process if the next layer is also obfuscated or uses a different compression method</p>
+</li>
+</ul>
+<p>This can become a time-consuming and repetitive task because multiple layers of obfuscation are used.</p>
+<p>Or save time and use my online deobfuscator tool <a href="https://pydeobf.xyz">pydeobf.xyz</a> or use the <a href="https://github.com/d33znu75/PyFuscate_deobfscator">Python Deobfuscator for Py-Fuscate</a> on my GitHub, which deobfuscates Py-Fuscate code and outputs the raw bytecode. Why bytecode? because the marshal module works at the bytecode level, not the source level.</p>
+<p>Deobfuscated bytecode using my online tool:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/5.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="step-5-deobfuscation-to-source-code">Step 5: Deobfuscation to Source Code</h3>
+<p>Once we extract the bytecode, we can either:</p>
+<ul>
+<li>
+<p>Manually reverse it (takes a lot of time), or</p>
+</li>
+<li>
+<p>Let an LLM (like ChatGPT) regenerate the readable Python code from bytecode.</p>
+</li>
+</ul>
+<p>Here’s the recovered source code:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">tkinter</span> <span class="k">as</span> <span class="nn">tk</span>
+
+<span class="k">def</span> <span class="nf">encrypt_text_to_coords</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="p">[</span><span class="nb">ord</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">^</span> <span class="nb">ord</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">text</span><span class="o">.</span><span class="n">encode</span><span class="p">())]</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">byte</span> <span class="ow">in</span> <span class="n">encrypted</span><span class="p">:</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="n">byte</span> <span class="o">//</span> <span class="mi">8</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="s1">&#39;abcdefgh&#39;</span><span class="p">[</span><span class="n">byte</span> <span class="o">%</span> <span class="mi">8</span><span class="p">]</span>
+        <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file</span><span class="si">}{</span><span class="n">rank</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">coords</span>
+
+<span class="k">def</span> <span class="nf">check_encryption</span><span class="p">(</span><span class="n">input_text</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="n">encrypted_coords</span> <span class="o">=</span> <span class="n">encrypt_text_to_coords</span><span class="p">(</span><span class="n">input_text</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">encrypted_coords</span> <span class="o">==</span> <span class="n">coords</span>
+
+<span class="n">coords</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;e4&#39;</span><span class="p">,</span> <span class="s1">&#39;a3&#39;</span><span class="p">,</span> <span class="s1">&#39;c3&#39;</span><span class="p">,</span> <span class="s1">&#39;f2&#39;</span><span class="p">,</span> <span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span><span class="p">,</span> <span class="s1">&#39;b6&#39;</span><span class="p">,</span> <span class="s1">&#39;h1&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;f6&#39;</span><span class="p">,</span> <span class="s1">&#39;a4&#39;</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span><span class="p">,</span> <span class="s1">&#39;b2&#39;</span><span class="p">,</span> <span class="s1">&#39;d2&#39;</span><span class="p">,</span> <span class="s1">&#39;d7&#39;</span><span class="p">,</span> <span class="s1">&#39;a4&#39;</span><span class="p">,</span> <span class="s1">&#39;b6&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;h1&#39;</span><span class="p">,</span> <span class="s1">&#39;g4&#39;</span><span class="p">,</span> <span class="s1">&#39;f2&#39;</span><span class="p">,</span> <span class="s1">&#39;g7&#39;</span><span class="p">,</span> <span class="s1">&#39;c3&#39;</span><span class="p">,</span> <span class="s1">&#39;f2&#39;</span><span class="p">,</span> <span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span>
+<span class="p">]</span>
+
+<span class="n">key</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;lifelover&quot;</span>
+
+<span class="k">def</span> <span class="nf">validate_input</span><span class="p">():</span>
+    <span class="n">user_input</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">check_encryption</span><span class="p">(</span><span class="n">user_input</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">result_label</span><span class="o">.</span><span class="n">config</span><span class="p">(</span>
+            <span class="n">text</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Correct! here is your flag: APT</span><span class="se">{{</span><span class="si">{</span><span class="n">user_input</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">fg</span><span class="o">=</span><span class="s2">&quot;green&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">result_label</span><span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Incorrect! ghiyerha&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+
+<span class="c1"># GUI setup</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Tk</span><span class="p">()</span>
+<span class="n">root</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Crack me!&quot;</span><span class="p">)</span>
+<span class="n">label</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Enter the secret:&quot;</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Courier&quot;</span><span class="p">,</span> <span class="mi">14</span><span class="p">))</span>
+<span class="n">label</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Courier&quot;</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span> <span class="n">width</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">entry</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">validate_button</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span>
+    <span class="n">root</span><span class="p">,</span>
+    <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Check&quot;</span><span class="p">,</span>
+    <span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Courier&quot;</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span>
+    <span class="n">command</span><span class="o">=</span><span class="n">validate_input</span>
+<span class="p">)</span>
+<span class="n">validate_button</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">result_label</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Courier&quot;</span><span class="p">,</span> <span class="mi">14</span><span class="p">))</span>
+<span class="n">result_label</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">pady</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">mainloop</span><span class="p">()</span>
+</code></pre></div>
+
+<h3 id="step-6-reverse-engineering-the-algorithm">Step 6: Reverse Engineering the Algorithm</h3>
+<p>The encryption function XORs the input string with a repeating key <code>lifelover</code>, then maps each result byte to a chessboard-style coordinate using:</p>
+<div class="codehilite"><pre><span></span><code>Rank = (byte // 8) + 1
+File = &#39;abcdefgh&#39;[byte % 8]
+</code></pre></div>
+
+<p>To reverse it:</p>
+<ul>
+<li>
+<p>Convert each coordinate back into its byte representation.</p>
+</li>
+<li>
+<p>XOR with the key.</p>
+</li>
+<li>
+<p>Decode into a UTF-8 string.</p>
+</li>
+</ul>
+<p>Example :</p>
+<div class="codehilite"><pre><span></span><code>e4 → file e → index 4, rank 4 → (4-1)*8 + 4 = 28
+</code></pre></div>
+
+<h3 id="step-7-solver-script">Step 7: Solver Script</h3>
+<p>Here's a solver python code that will give us the correct secret : </p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">coords_to_encrypted_bytes</span><span class="p">(</span><span class="n">coords</span><span class="p">):</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="s1">&#39;abcdefgh&#39;</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">coords</span><span class="p">:</span>
+        <span class="n">file_char</span> <span class="o">=</span> <span class="n">coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">coord</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">file_index</span> <span class="o">=</span> <span class="n">files</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">file_char</span><span class="p">)</span>
+        <span class="n">byte</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">+</span> <span class="n">file_index</span>
+        <span class="n">encrypted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">byte</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">encrypted</span>
+
+<span class="k">def</span> <span class="nf">decrypt_coords</span><span class="p">(</span><span class="n">encrypted_bytes</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">bytes</span><span class="p">([</span><span class="n">b</span> <span class="o">^</span> <span class="n">key</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">encrypted_bytes</span><span class="p">)])</span>
+
+<span class="n">coords</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;e4&#39;</span><span class="p">,</span> <span class="s1">&#39;a3&#39;</span><span class="p">,</span> <span class="s1">&#39;c3&#39;</span><span class="p">,</span> <span class="s1">&#39;f2&#39;</span><span class="p">,</span> <span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span><span class="p">,</span> <span class="s1">&#39;b6&#39;</span><span class="p">,</span> <span class="s1">&#39;h1&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;f6&#39;</span><span class="p">,</span> <span class="s1">&#39;a4&#39;</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span><span class="p">,</span> <span class="s1">&#39;b2&#39;</span><span class="p">,</span> <span class="s1">&#39;d2&#39;</span><span class="p">,</span> <span class="s1">&#39;d7&#39;</span><span class="p">,</span> <span class="s1">&#39;a4&#39;</span><span class="p">,</span> <span class="s1">&#39;b6&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;h1&#39;</span><span class="p">,</span> <span class="s1">&#39;g4&#39;</span><span class="p">,</span> <span class="s1">&#39;f2&#39;</span><span class="p">,</span> <span class="s1">&#39;g7&#39;</span><span class="p">,</span> <span class="s1">&#39;c3&#39;</span><span class="p">,</span> <span class="s1">&#39;f2&#39;</span><span class="p">,</span> <span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span>
+<span class="p">]</span>
+<span class="n">key</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;lifelover&quot;</span>
+
+<span class="n">encrypted</span> <span class="o">=</span> <span class="n">coords_to_encrypted_bytes</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+<span class="n">secret</span> <span class="o">=</span> <span class="n">decrypt_coords</span><span class="p">(</span><span class="n">encrypted</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">secret</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Output : <code>python_b_thon_w_bla_thon</code></p>
+<p><img class="lightbox-img" src="../images/aptctf2025/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : <code>APT{python_b_thon_w_bla_thon}</code></p>
+<h1 id="second-challenge-ransomware">Second Challenge: ransomware</h1>
+<p>In this challenge, I gave participants a Windows executable ransomware and an encrypted flag file. Their objective was to reverse engineer the binary and its encryption method to recover the original file.</p>
+<p>This is my approach to solving this challenge.</p>
+<h3 id="static-analysis">Static Analysis</h3>
+<p>First, I performed static analysis using DIE (Detect It Easy):</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/7.png" alt="" onclick="openLightbox(this)"></p>
+<p>The analysis revealed a 64-bit console executable compiled in C++ using Visual Studio 2022. It also uses OpenSSL, which likely handles the file encryption functionality.</p>
+<h3 id="decompilation">Decompilation</h3>
+<p>I used IDA to decompile the binary. Examining the main function revealed:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/8.png" alt="" onclick="openLightbox(this)"></p>
+<p>The execution flow is:</p>
+<p>1 - The binary prints "[+] WELCOME TO WINDOWS ACTIVATIOR"</p>
+<p>2 - It calls <code>sub_140006300</code> with an argument (time calculations suggest this is a sleep function, confirmed by sandbox execution showing a delay between messages)</p>
+<p>3 - It prints " "[-] Activating Windows..."</p>
+<p>4 - It calls two important functions: <code>sub_140001600</code> and <code>sub_1400017F0</code></p>
+<p>Looking deeper at these two functions:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/9.png" alt="" onclick="openLightbox(this)"></p>
+<p>Both functions:</p>
+<ul>
+<li>
+<p>Load binary resources named "IV_RESOURCE" and "KEY_RESOURCE"</p>
+</li>
+<li>
+<p>XOR-decrypt them with the byte 0x45 (decimal 69)</p>
+</li>
+<li>
+<p>Append the result to a std::string</p>
+</li>
+</ul>
+<p>This indicates the ransomware uses hardcoded XOR-obfuscated encryption keys stored in the .rsrc section.</p>
+<h3 id="resource-analysis">Resource Analysis</h3>
+<p>To extract these resources, I used Resource Hacker to examine the .rsrc section:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/10.png" alt="" onclick="openLightbox(this)"></p>
+<p><img class="lightbox-img" src="../images/aptctf2025/11.png" alt="" onclick="openLightbox(this)"></p>
+<p>After obtaining the XOR-encrypted KEY and IV values, I performed XOR decryption:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/12.png" alt="" onclick="openLightbox(this)"></p>
+<h4 id="key-chabani_chabana">KEY : <code>CHABANI_CHABANA!</code></h4>
+<p><img class="lightbox-img" src="../images/aptctf2025/13.png" alt="" onclick="openLightbox(this)"></p>
+<h4 id="iv-chabani_labani">IV : <code>!CHABANI_LABANI!</code></h4>
+<h3 id="decryption">Decryption</h3>
+<p>With the key and initialization vector identified, I determined that the ransomware likely uses AES encryption. I attempted decryption with these values:</p>
+<p><img class="lightbox-img" src="../images/aptctf2025/14.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG: <code>APT{w_ch4k_ch4b4n1_ch4b4n4}</code></p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

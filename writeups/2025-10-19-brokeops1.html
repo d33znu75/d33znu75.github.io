@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrokeOps 1: Metamask wallet Recovery | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>BrokeOps 1: Metamask wallet Recovery</h1>
+            <div class="writeup-meta">
+                2025-10-19 | <span class="tag">Forensics</span><span class="tag">CTF</span>
+            </div>
+            
+            <h2 id="challenge-description">Challenge Description</h2>
+<p><img class="lightbox-img" src="../images/brokeops1/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>In this challenge, I provide participants with an EML file, which is an email file format. We can open it with any text editor or email client.</p>
+<p>Additionally, I gave a link to a website that mimics a MetaMask wallet recovery service by inputting the seed phrase.</p>
+<blockquote>
+<p><strong>Note:</strong> The website is for testing the recovered seed phrase only; it doesn't store any data. It returns the flag if the seed phrase is correct.</p>
+</blockquote>
+<p><img class="lightbox-img" src="../images/brokeops1/3.png" alt="" onclick="openLightbox(this)"></p>
+<h2 id="solution">Solution</h2>
+<p>Starting with the EML file, we can open it with a text editor or an email client.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>We have the following information:</p>
+<ul>
+<li>A Windows machine was hacked and the attacker obtained the Windows credentials</li>
+<li>The attacker also cracked the password manager database, where the password is the Windows password + 4 digits</li>
+<li>The database contains the MetaMask old password before the attacker changed it</li>
+</ul>
+<p>Let's download the machine AD1 file and investigate it for the password manager database.</p>
+<p>We find a KeePass database file named <code>db.kdbx</code> in the <code>C:\Users\hlmkh\Documents\</code> directory.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/5.png" alt="" onclick="openLightbox(this)"></p>
+<p>We need to extract the file to crack it, but first we need the Windows password.</p>
+<p>To obtain that, we need the SAM and SYSTEM hive files from the machine.</p>
+<p>These can normally be found in the <code>C:\Windows\System32\config\</code> directory, but in this machine they are located in <code>C:\</code>.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>Let's extract them and use <code>mimikatz</code> to get the NTLM hash of the user <code>hlmkh</code>:</p>
+<div class="codehilite"><pre><span></span><code>mimikatz<span class="w"> </span><span class="c1"># lsadump::sam /system:system /SAM:SAM</span>
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/brokeops1/7.png" alt="" onclick="openLightbox(this)"></p>
+<div class="codehilite"><pre><span></span><code>Hash NTLM : 22c234c1a359995cccade7706f4da4f0
+</code></pre></div>
+
+<p>You can use <code>hashcat</code> or <code>john the ripper</code> to crack the hash with the <code>rockyou.txt</code> wordlist, or you can use <code>crackstation.net</code> to crack it online.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/8.png" alt="" onclick="openLightbox(this)"></p>
+<p>The password is <code>paquita</code>.</p>
+<p>Now that we have the Windows password, we need to create a wordlist with the Windows password + 4-digit combinations.</p>
+<p>Here's a simple Python script to generate the wordlist:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;paquita&quot;</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;wordlist.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10000</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">n</span><span class="si">:</span><span class="s2">04d</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;done&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>To crack the KeePass database, we can use <code>keepass2john</code> to convert it to a John the Ripper format and then use <code>john</code> to crack it.</p>
+<p>However, in this case we can't because the database is using a version that is not supported by <code>keepass2john</code>.</p>
+<p>So we need to use an alternative KeePass database cracker that supports this version.</p>
+<p>I used the <a href="https://github.com/toneillcodes/brutalkeepass/">brutalkeepass</a> tool to crack it.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/9.png" alt="" onclick="openLightbox(this)"></p>
+<p>The password is <code>paquita4862</code>.</p>
+<p>Opening the KeePass database, we find saved credentials for the MetaMask wallet.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/10.png" alt="" onclick="openLightbox(this)"></p>
+<p>Password: <code>1_l0v3_crypt0_1ts_s4f3</code></p>
+<p>Now we need to recover the 12-word seed phrase from the machine.</p>
+<p>MetaMask is a browser extension that serves as a cryptocurrency wallet and gateway to blockchain applications. It stores sensitive data, including seed phrases, in the browser's local storage or extension data.</p>
+<p>It saves the vault data in the browser's local extension settings folder, which is located differently based on the browser used.</p>
+<p>On this Windows machine, the only available browser is <code>Microsoft Edge</code>.</p>
+<p>So we can look for the MetaMask vault data in the Edge extensions folder, which is located at:
+<code>C:\Users\hlmkh\AppData\Local\Microsoft\Edge\User Data\Default\Local Extension Settings\</code></p>
+<p><img class="lightbox-img" src="../images/brokeops1/11.png" alt="" onclick="openLightbox(this)"></p>
+<p>We can see two folders there; the first one is the MetaMask extension folder.</p>
+<p>Inside the folder, we find a file named <code>001098.log</code>. The <code>.log</code> file in the MetaMask folder contains the vault data encrypted with the MetaMask password.</p>
+<p>We can upload it to the <a href="https://metamask.github.io/vault-decryptor/">MetaMask Vault Decryptor</a> website to decrypt it, or paste only the content of the vault JSON in the text area and input the MetaMask password we obtained from the KeePass database.</p>
+<p>As a result, we get the decrypted vault data which contains the 12-word seed phrase.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/14.png" alt="" onclick="openLightbox(this)"></p>
+<p>12-word seed phrase:</p>
+<div class="codehilite"><pre><span></span><code>maximum cup tiger recycle supreme cloth butter steak rigid notable stumble length
+</code></pre></div>
+
+<p>Now we can use the seed phrase on the provided website to recover the wallet and retrieve the flag.</p>
+<p><img class="lightbox-img" src="../images/brokeops1/12.png" alt="" onclick="openLightbox(this)"></p>
+<p><img class="lightbox-img" src="../images/brokeops1/13.png" alt="" onclick="openLightbox(this)"></p>
+<p>Flag: <code>AKASEC{s0rr0w_w1ll_f1nd_y0u___Wh0_w4nts_t0_c0me_w1th_m3?}</code></p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

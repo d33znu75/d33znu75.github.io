@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware Write Up | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Hardware Write Up</h1>
+            <div class="writeup-meta">
+                2024-11-28 | <span class="tag">Hardware</span>
+            </div>
+            
+            <h4 id="warning-the-following-scenario-is-entirely-fictional-and-part-of-a-hardwareiot-security-ctf-capture-the-flag-challenge-any-references-to-individuals-organizations-or-events-including-the-character-neon-attempting-to-hack-a-club-named-akasec-club-are-purely-hypothetical-and-created-for-educational-purposes-this-scenario-is-designed-to-simulate-a-security-challenge-and-is-not-meant-to-encourage-or-condone-illegal-activities-the-goal-of-this-challenge-is-to-enhance-skills-in-ethical-hacking-security-research-and-system-protection-hacking-unauthorized-access-to-systems-and-other-cybercrimes-are-illegal-and-unethical-always-respect-the-law-and-act-responsibly-online">Warning: The following scenario is entirely fictional and part of a Hardware/IoT security CTF (Capture The Flag) challenge. Any references to individuals, organizations, or events, including the character "Neon" attempting to hack a club named "Akasec Club," are purely hypothetical and created for educational purposes. This scenario is designed to simulate a security challenge and is not meant to encourage or condone illegal activities. The goal of this challenge is to enhance skills in ethical hacking, security research, and system protection. Hacking, unauthorized access to systems, and other cybercrimes are illegal and unethical. Always respect the law and act responsibly online.</h4>
+<h2 id="the-scenario">The Scenario :</h2>
+<p>Neon, a cybersecurity enthusiast, wants to test the security of the Akasec Club at her school. The club's infrastructure is vulnerable, as they've made several security mistakes. Your task is to assist Neon in gathering as much data as possible so she can report the vulnerabilities to the club and further enhance her hacking skills.V</p>
+<h2 id="first-task-get-the-hidden-data-in-the-mifare-classic-1k-key">First Task : Get the Hidden Data in the MIFARE CLASSIC 1K KEY</h2>
+<p><img class="lightbox-img" src="../images/dibit/arduino-cir.png" alt="" onclick="openLightbox(this)"></p>
+<p>The first activity in this scenario involves the person finding a Mifare Classic 1K key, which is used to access the club room. Using her robotics and hacking skills, she successfully dumps the key data and asks you to analyze it and determine what's inside.</p>
+<h3 id="solution">Solution :</h3>
+<p>We are provided with a dump file (dump.mfd) of the MIFARE key. The dump contains a lot of gibberish data, so we need to parse it into human-readable format in order to continue our analysis.</p>
+<p>To parse the file, you can use the script provided by (@zhovner) https://github.com/zhovner/mfdread, or you can create your own script. However, in both cases, you'll need to understand the memory layout of the MIFARE Classic 1K.</p>
+<p><img class="lightbox-img" src="../images/dibit/layout.png" alt="" onclick="openLightbox(this)"></p>
+<p>The MIFARE Classic 1K card holds 1024 bytes, which are divided into 16 sectors. Each sector is further divided into 4 blocks. Blocks 0, 1, and 2 of each sector contain data, while block 3 holds the keys and access control bits (controlling access to the stored data on the card and ensuring its security). Additionally, the first block (Block 0) of the first sector (Sector 0) contains the manufacturer data, such as the UID and other related information.</p>
+<p>This is a screenshot of the dump file being parsed using (@zhovner)'s script.</p>
+<p><img class="lightbox-img" src="../images/dibit/parse.png" alt="" onclick="openLightbox(this)"></p>
+<p>Now that we know where the data is stored, if we examine the second block of the first sector (sector 0, block 1), we find a PNG file signature. This indicates that the key stores a PNG image, which we need to extract.</p>
+<p><img class="lightbox-img" src="../images/dibit/unhex.png" alt="" onclick="openLightbox(this)"></p>
+<p>Using a custom script, we can extract the stored image.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Usage: python3 script.py &lt;dump file&gt;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">extract_and_save</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">file_bytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">hex_data</span> <span class="o">=</span> <span class="n">file_bytes</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span>
+    <span class="n">all_data</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">chunk_start</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">hex_data</span><span class="p">),</span> <span class="mi">32</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c1"># this is for skipping the first block in first sector and the 4th block in each sector</span>
+            <span class="k">continue</span>
+        <span class="n">all_data</span> <span class="o">+=</span> <span class="n">hex_data</span><span class="p">[</span><span class="n">chunk_start</span><span class="p">:</span><span class="n">chunk_start</span> <span class="o">+</span> <span class="mi">32</span><span class="p">]</span>
+    <span class="n">byte_data</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">all_data</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;flag.png&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">byte_data</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;done, saved to flag.png&quot;</span><span class="p">)</span>
+
+<span class="n">file_path</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">extract_and_save</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+</code></pre></div>
+
+<p>We can then obtain an image, which is a QR code that reveals the flag when scanned.</p>
+<p><img class="lightbox-img" src="../images/dibit/qr-flag.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : <code>AKASEC{h1dd3n_1n_m1f4r3_card}</code></p>
+<p>The vulnerability here is that the data is stored in plain text without encryption. Sensitive data should always be encrypted to protect it from unauthorized access. Additionally, any sensitive operations, such as checking or verifying user information, should be done server-side, where stronger security measures can be implemented.</p>
+<h2 id="second-task-crack-the-wifi-password-and-retrieve-the-cctv-footage">Second Task : Crack the Wifi Password and retrieve the CCTV footage.</h2>
+<p><img class="lightbox-img" src="../images/dibit/cctv.png" alt="" onclick="openLightbox(this)"></p>
+<p>In this activity, based on the leaked screenshot our little hacker iscovered that the club had security cameras that could be monitored via their Wi-Fi network, but viewing the dashboard required authentication. Using her hacking skills, she successfully captured wireless packets from the club wifi (AKASEC-WiFi), including the Wi-Fi handshake, by performing a deauthentication attack, along with other network packets. Your task is to assist her in cracking the Wi-Fi password and retrieving the CCTV footage from the captured packets.</p>
+<h3 id="solution_1">Solution :</h3>
+<p>The provided .cap file contains a Wi-Fi handshake. But what exactly is a Wi-Fi handshake?</p>
+<p>When a device attempts to connect to a Wi-Fi network, it goes through a process known as the 4-way handshake. This is a sequence of messages exchanged between the device (client) and the Wi-Fi router (access point). The purpose of the handshake is to authenticate the device on the network and to negotiate encryption keys that secure communication between the device and the router.</p>
+<p>In this case, the hacker used a deauthentication attack, which forces a device to disconnect from the Wi-Fi network by sending fake deauthentication packets. This disrupts the connection, allowing the attacker to capture the Wi-Fi handshake, as seen in our scenario. Deauthentication attacks can also be used for denial-of-service (DoS) attacks.</p>
+<p>Now, we have a capture file from the club's Wi-Fi network (AKASEC-WiFi). Let's proceed by cracking the handshake and retrieving the Wi-Fi password.</p>
+<p>We will use aircrack-ng, a tool that includes several utilities for assessing Wi-Fi network security, with the ability to crack WEP and WPA PSK passwords.</p>
+<p>First, let's gather the network information by running this command in the terminal.</p>
+<div class="codehilite"><pre><span></span><code>aircrack-ng<span class="w"> </span>akasec-01.cap
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/dibit/aircrack.png" alt="" onclick="openLightbox(this)"></p>
+<h4 id="and-the-answer-to-question-1-in-this-task-what-is-the-bssid-of-the-router-is-ec8a4ca9109c">And the answer to question 1 in this task "What is the BSSID of the router?" is: <code>EC:8A:4C:A9:10:9C</code></h4>
+<p>We will provide it with a wordlist to check passwords against; in this case, we'll use the famous wordlist, Rockyou.txt</p>
+<div class="codehilite"><pre><span></span><code>aircrack-ng<span class="w"> </span>akasec-01.cap<span class="w"> </span>-w<span class="w"> </span>./rockyou.txt
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/dibit/crack.png" alt="" onclick="openLightbox(this)"></p>
+<p>In less than a minute, we can obtain the Wi-Fi password, which is <code>donthackme</code>.</p>
+<h4 id="and-the-answer-to-question-2-in-this-task-what-is-the-password-of-the-router-is-donthackme">And the answer to question 2 in this task "What is the password of the router?" is: <code>donthackme</code></h4>
+<p>Now that we have the password, let's decrypt the traffic using the SSID and password.
+Open the .cap file in Wireshark and go to Edit → Preferences → Protocols → IEEE 802.11</p>
+<p><img class="lightbox-img" src="../images/dibit/pref.png" alt="" onclick="openLightbox(this)"></p>
+<p>Check the Enable Decryption box. If it's not already checked, click Edit next to Decryption Keys. Then, click the + button to add a decryption key.
+Select wpa-pwd for the Key Type, and enter the key in the following format: <code>password:SSID</code>.</p>
+<p>In our case, set it to <code>donthackme:AKASEC-WiFi</code>.</p>
+<p><img class="lightbox-img" src="../images/dibit/wpa.png" alt="" onclick="openLightbox(this)"></p>
+<p>Now that we've decrypted the traffic on the AKASEC network, go to the Wireshark filter bar and filter by HTTP, which contains unencrypted traffic. You will see many GET requests that fetch image frames from the CCTV cameras.</p>
+<p><img class="lightbox-img" src="../images/dibit/frames.png" alt="" onclick="openLightbox(this)"></p>
+<p>To export all the images from the HTTP protocol Go to File → Export Objects → HTTP select all the image files you want to save, Choose a destination folder and click Save to export the images.</p>
+<p><img class="lightbox-img" src="../images/dibit/exported.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : <code>AKASEC{UNSECURE_SERVER_CAN_LEAD_TO_CCTV_HACK}</code></p>
+<p>The main vulnerability in this scenario is the importance of using a strong password for your Wi-Fi network. If your Wi-Fi is connected to sensitive devices, such as CCTV cameras, attackers could potentially access these devices—even if the camera's dashboard has authentication in place. This is because, if an attacker gains access to your network, they may be able to bypass other security measures. Additionally, many security cameras still use the outdated HTTP protocol to send video streams, which is insecure because it does not encrypt the data. This makes it possible for attackers to intercept the video feed and gain access to potentially sensitive footage.</p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

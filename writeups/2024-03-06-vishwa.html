@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vishwa CTF 2024 Write ups | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Vishwa CTF 2024 Write ups</h1>
+            <div class="writeup-meta">
+                2024-03-06 | <span class="tag">Forensics</span><span class="tag">Steganography</span><span class="tag">Reverse Engineering</span>
+            </div>
+            
+            <h1 id="forensics-category">Forensics Category:</h1>
+<h3 id="smoke-out-the-rat-challenge">Smoke out the Rat challenge :</h3>
+<h1 id="description">Description :</h1>
+<blockquote>
+<p>There was a major heist at the local bank. Initial findings suggest that an intruder from within the bank, specifically someone from the bank's database maintenance team, aided in the robbery. This traitor granted access to an outsider, who orchestrated the generation of fake transactions and the depletion of our valuable customers' accounts. We have the phone number, '789-012-3456', from which the login was detected, which manipulated the bank's employee data. Additionally, it's noteworthy that this intruder attempted to add gibberish to the binlog and ultimately dropped the entire database at the end of the heist.</p>
+<p>Your task is to identify the first name of the traitor, the last name of the outsider, and the time at which the outsider was added to the database.</p>
+<p>Flag format : VishwaCTF{TraitorFirstName_OutsiderLastName_HH:MM:SS}</p>
+</blockquote>
+<p>We received the DBlog-bin.000007 file as an attachment.</p>
+<p>To retrieve the information, we used the strings command on the file, which provided us with the bank's database.</p>
+<p>The challenge description instructed us to find the first name of the traitor with the phone number 789-012-3456.</p>
+<p>Through a simple search, we identified the traitor as Matthew Williams.</p>
+<p><img class="lightbox-img" src="../images/vishwa2024/1.png" alt="" onclick="openLightbox(this)"></p>
+<p>Now, moving on to the outsider who is part of the maintenance team:</p>
+<p>Within the database, we found a table of maintainers containing only one person, named John.</p>
+<p><img class="lightbox-img" src="../images/vishwa2024/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>To proceed, we need to determine John's last name, so we performed a search for his name.</p>
+<p><img class="lightbox-img" src="../images/vishwa2024/3.png" alt="" onclick="openLightbox(this)"></p>
+<p>for timestamp you must convert it to IST (Indian Standard Time).</p>
+<p>FLAG : </p>
+<blockquote>
+<p>VishwaCTF{Matthew_Darwin_15:31:29}</p>
+</blockquote>
+<hr />
+<h3 id="repo-riddles-challenge">Repo Riddles challenge :</h3>
+<h1 id="description_1">Description :</h1>
+<blockquote>
+<p>We got a suspicious Linkedin post which got a description and also a zip file with it. It is suspected that a message is hidden in there. Can you find it?</p>
+<p>LinkedIn Post Description:</p>
+<p>Title: My First Project -The Journey Begins</p>
+<p>Hello fellow developers and curious minds!</p>
+<p>I'm thrilled to share with you my very first Git project - a labor of love, dedication, and countless late-night commits. 🚀</p>
+<p>Explore the code, unearth its nuances, and let me know your thoughts. Your feedback is invaluable and will contribute to the ongoing evolution of this project.</p>
+</blockquote>
+<p>We had an attachment containing a zip file. Upon extracting the zip file, I executed the command "ls -a" and found a directory named ".git". To explore further, I used the command "git reflogs" to inspect the commit history.</p>
+<p>While browsing through the commit history, I stumbled upon a text file containing flag characters and their corresponding indices. Additionally, within the commit history, there was a commit that has a Spotify web page and in its source code we have another flag characters. Furthermore, an image was also discovered in the commit history.</p>
+<p>By combining these findings , I was able to get the flag.</p>
+<p>string[9] = _
+string[10] = 2
+string[11] = 7
+string[12] = 2
+string[13] = 7</p>
+<p>string[3: 6] = G1g</p>
+<p>string[0] = G string[1] = 1 string[2] = t</p>
+<p><img class="lightbox-img" src="../images/vishwa2024/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>Flag:</p>
+<blockquote>
+<p>VishwaCTF{G1t_G1gger_2727}</p>
+</blockquote>
+<hr />
+<h3 id="router-port-challenge">Router |port| challenge :</h3>
+<h1 id="description_2">Description :</h1>
+<blockquote>
+<p>There's some unusual traffic on the daytime port, but it isn't related to date or time requests. Analyze the packet capture to retrieve the flag</p>
+</blockquote>
+<p>We were provided with a pcap capture file and instructed to examine the daytime port. Upon analysis, we discovered a text that appeared to be encrypted with ROT13.</p>
+<p>After extracting all the encrypted texts and decrypting them using the ROT13 cipher, we were able to reconstruct a complete conversation. This likely contained valuable information relevant to the challenge or investigation at hand.</p>
+<blockquote>
+<p>Hey, mate!
+Yo, long time no see!
+You sure this mode of communication is still safe?
+Yeah, unless someone else is capturing network packets on the same network we're using. Anyhow, our text is encrypted, and it would be difficult to interpret.
+So let's hope no one else is capturing.
+What's so confidential that you're about to share?
+It's about cracking the password of a person with the username 'Anonymous.'
+Oh wait! Don't you know I'm not so good at password cracking?
+Yeah, I know, but it's not about cracking. It's about the analysis of packets. I've completed most of the job, even figured out a way to get the session key to decrypt and decompress the packets.
+Holy cow! How in the world did you manage to get this key from his device?
+Firstly, I hacked the router of our institute and closely monitored the traffic, waiting for 'Anonymous' to download some software that requires admin privilege to install. Once he started the download, I, with complete control of the router, replaced the incoming packets with the ones I created containing malicious scripts, and thus gained a backdoor access to his device. The further job was a piece of cake.
+Whoa! It's so surprising to see how much you know about networking or hacking, to be specific.
+Yeah, I did a lot of research on that. Now, should we focus on the purpose of this meet?
+Yes, of course. So, what should I do for you?
+Have you started the packet capture as I told you earlier?
+Yes, I did.
+Great! I will be sending his SSL key, so find the password of 'Anonymous.'
+Yes, I would, but I need some details like where to start.
+The only details I have are he uses the same password for every website, and he just went on to register for a CTF event.
+Okay, I will search for it.
+Wait a second, I won't be sending the SSL key on this Daytime Protocol port; we need to keep this untraceable.
+I will be sending it through FTP. Since the file is too large, I will be sending it in two parts. Please remember to merge them before using it. Additionally, some changes may be made to it during transfer due to the method I'm using. Ensure that you handle these issues.
+Okay! ...</p>
+</blockquote>
+<p>After exporting the SSL keys from the ftp-data and discovering that they were encrypted with ROT20, we decrypted the SSL data. Upon importing the decrypted SSL data back into the pcap file, we were able to decrypt all the traffic within the pcap.</p>
+<p>Given that we knew the username was "Anonymous", we conducted a simple string search within the decrypted traffic to find the corresponding password. Eventually, we found a password which turned out to be the flag we were seeking.</p>
+<p><img class="lightbox-img" src="../images/vishwa2024/5.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : </p>
+<blockquote>
+<p>VishwaCTF{K3Y5_CAN_0P3N_10CK5}</p>
+</blockquote>
+<hr />
+<h3 id="mysterious-old-case-challenge">Mysterious Old Case challenge :</h3>
+<h1 id="description_3">Description :</h1>
+<blockquote>
+<p>You as a FBI Agent, are working on a old case involving a ransom of $200,000. After some digging you recovered an audio recording.</p>
+</blockquote>
+<p>In this challenge, we have an MP3 file. While listening to it, we hear someone talking in reverse in the middle of the song. After reversing that part, we hear the following message:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">I</span><span class="w"> </span><span class="n">sm</span><span class="w"> </span><span class="n">John</span><span class="w"> </span><span class="n">Cooper</span><span class="o">.</span><span class="w"> </span><span class="n">It</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="mi">24</span><span class="n">th</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">November</span><span class="p">,</span><span class="w"> </span><span class="mf">1971.</span><span class="w"> </span><span class="n">Now</span><span class="w"> </span><span class="n">I</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">left</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">Seattle</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">headed</span><span class="w"> </span><span class="n">towards</span><span class="w"> </span><span class="n">Reno</span><span class="o">.</span><span class="w"> </span><span class="n">I</span><span class="s1">&#39;ve got all my demands fulfilled. I have done some changes in the flight log and uploaded it to a remote server. The file is encrypted. The hint for decryption is the airliner that I was flying in. Most importantly, the secret key is split and hidden in every element of the Fibonacci series starting from two.</span>
+</code></pre></div>
+
+<p>In the EXIF metadata of the MP3 file, we have a link to a drive containing many flight logs and a hint for the password to access the flight log:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Comment</span><span class="w">                         </span><span class="o">:</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">zip</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">lowecase</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="n">no</span><span class="w"> </span><span class="n">spaces</span>
+<span class="n">User</span><span class="w"> </span><span class="n">Defined</span><span class="w"> </span><span class="n">URL</span><span class="w">                </span><span class="o">:</span><span class="w"> </span><span class="n">https</span><span class="o">://</span><span class="n">drive</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">com</span><span class="sr">/file/d/1bkuZRLKOGWB7tLNBseWL34BoyI379QbF/</span><span class="n">view</span><span class="o">?</span><span class="n">usp</span><span class="o">=</span><span class="n">drive_lin</span>
+</code></pre></div>
+
+<p>Since this case is related to D.B. Cooper (a famous plane hijack), we know that the flight log is for Flight 305, and the password is the name of the airliner he was flying during the hijack.</p>
+<p>password : northwestorientairlines</p>
+<p>therefore the flight log looks like this:</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="n">V</span>
+<span class="n">i</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="n">s</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="n">h</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="n">w</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">07</span><span class="p">:</span><span class="mf">31</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">HWR</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="mf">1971</span><span class="o">-</span><span class="mf">11</span><span class="o">-</span><span class="mf">24</span><span class="w"> </span><span class="mf">06</span><span class="p">:</span><span class="mf">22</span><span class="p">:</span><span class="mf">08.531691</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ATT</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Boeing</span><span class="w"> </span><span class="mf">727</span>
+<span class="n">a</span>
+<span class="mf">...</span>
+</code></pre></div>
+
+<p>So I applied a Python script to extract the characters from the file, since they are in a Fibonacci sequence.</p>
+<p>FLAG : </p>
+<blockquote>
+<p>VishwaCTF{1_W!LL_3E_B@CK}</p>
+</blockquote>
+<hr />
+<h3 id="secret-code-challenge">Secret Code challenge :</h3>
+<h1 id="description_4">Description :</h1>
+<blockquote>
+<p>Akshay has a letter for you and need your help</p>
+</blockquote>
+<p>In this challenge, we have two attachments: a TXT file and a black picture.</p>
+<p>Applying binwalk to the picture revealed a ZIP file containing another ZIP file, which was protected. There was also a text file stating that the password for the ZIP is a 6-digit number.</p>
+<p>After cracking the ZIP with John using a wordlist containing all 6-digit combinations:</p>
+<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>zip2john<span class="w"> </span>5ecr3t_c0de.zip<span class="w"> </span>&gt;<span class="w"> </span><span class="nb">hash</span>
+$<span class="w"> </span>john<span class="w"> </span>--wordlist<span class="o">=</span>wordlist.txt<span class="w"> </span><span class="nb">hash</span>
+</code></pre></div>
+
+<p>The code was found to be 945621.</p>
+<p>Upon extracting the ZIP, we obtained another two TXT files. One of them resembles:</p>
+<div class="codehilite"><pre><span></span><code>(443, 1096)
+(444, 1096)
+(445, 1096)
+(3220, 1096)
+(3221, 1096)
+(38, 1097)
+(39, 1097)
+(43, 1097)
+(80, 1097)
+(81, 1097)
+(83, 1097)
+(93, 1097)
+(95, 1097)
+...
+</code></pre></div>
+
+<p>And the other file suggests that these numbers might be related to the earlier image.</p>
+<p>those are pixel cooredination so i made a pyhton script to put in those coordinations a black dot</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">ImageDraw</span>
+
+<span class="k">def</span> <span class="nf">draw_points_on_blank_image</span><span class="p">(</span><span class="n">coordinates</span><span class="p">):</span>
+    <span class="n">width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">coordinates</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">coord</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">coordinates</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span>
+
+    <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;RGB&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">)</span>
+    <span class="n">draw</span> <span class="o">=</span> <span class="n">ImageDraw</span><span class="o">.</span><span class="n">Draw</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">coordinates</span><span class="p">:</span>
+        <span class="n">draw</span><span class="o">.</span><span class="n">point</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+
+    <span class="n">img</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;image_with_points.jpg&quot;</span><span class="p">)</span>
+
+<span class="n">coordinates</span> <span class="o">=</span> <span class="p">[</span>
+<span class="p">(</span><span class="mi">443</span><span class="p">,</span> <span class="mi">1096</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">444</span><span class="p">,</span> <span class="mi">1096</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">445</span><span class="p">,</span> <span class="mi">1096</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">3220</span><span class="p">,</span> <span class="mi">1096</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">3221</span><span class="p">,</span> <span class="mi">1096</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">38</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">39</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">43</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">81</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">83</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">93</span><span class="p">,</span> <span class="mi">1097</span><span class="p">),</span>
+<span class="o">...</span>
+<span class="p">(</span><span class="mi">3221</span><span class="p">,</span> <span class="mi">1166</span><span class="p">),</span>
+<span class="p">(</span><span class="mi">3222</span><span class="p">,</span> <span class="mi">1166</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">draw_points_on_blank_image</span><span class="p">(</span><span class="n">coordinates</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Image created &#39;image_final.jpg&#39;&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/vishwa2024/6.jpg" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : </p>
+<blockquote>
+<p>VishwaCTF{th15_15_4_5up3r_53cr3t_c0d3_u53_1t_w153ly_4nd_d0nt_5h4re_1t_w1th_4ny0ne}</p>
+</blockquote>
+<hr />
+<h1 id="reverse-engineering-category">Reverse Engineering Category:</h1>
+<h3 id="your-bonus-challenge">Your Bonus challenge :</h3>
+<h1 id="description_5">Description :</h1>
+<blockquote>
+<p>I am very kind, and you're my friend too. I was about to share some flags with you, but unfortunately, a ransomware attack occurred on the file containing those flags. All the flags got encrypted by the ransomware. After cross-checking the directories, I found the ransomware file and some other related items.</p>
+<p>I'm going to share that information with you. However, due to the ransomware, I'm unable to provide you with the flags 😥😥. Now, I need your help to recover those flags. Can you assist me, please? Your cooperation would be highly appreciated, and you will receive a reward for your help.</p>
+<p>Note : Ransomware are not meant to be executed as it can harm your systems (although this won't) </p>
+</blockquote>
+<p>In this challenge, we received a ransomware.exe file and two text files. One of them contained some random characters.</p>
+<p>Then, opening the executable file in Ghidra and jumping to the main function to see how it works.</p>
+<p>We observe that the application opens a file named "Flags.txt" and writes to it.</p>
+<p>So, we used a Python script to reverse the random characters in the "Your_hacked_data0.txt" file, as it's the output of the flag.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Define the symbols used for encoding</span>
+<span class="n">symbols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;#&#39;</span><span class="p">,</span><span class="s1">&#39;(&#39;</span><span class="p">,</span><span class="s1">&#39;&amp;&#39;</span><span class="p">,</span><span class="s1">&#39;*&#39;</span><span class="p">,</span><span class="s1">&#39;)&#39;</span><span class="p">,</span><span class="s1">&#39;!&#39;</span><span class="p">,</span><span class="s1">&#39;%&#39;</span><span class="p">,</span><span class="s1">&#39;$&#39;</span><span class="p">,</span><span class="s1">&#39;@&#39;</span><span class="p">,</span><span class="s1">&#39;^&#39;</span><span class="p">]</span>
+
+<span class="c1"># Read data from the file and strip whitespace</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;Your_hacked_data0.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">]</span>
+
+<span class="c1"># Function to convert symbols to decimal numbers</span>
+<span class="k">def</span> <span class="nf">symbols_to_decimal</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+    <span class="n">decimal_line</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+            <span class="n">decimal_line</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">symbols</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">char</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">decimal_line</span>
+
+<span class="c1"># Function to convert decimal numbers to ASCII and search for the flag (format: VISHWACTF)</span>
+<span class="k">def</span> <span class="nf">decimal_to_ascii</span><span class="p">(</span><span class="n">decimal_string</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">):</span>
+        <span class="n">ascii_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">decimal_string</span><span class="p">),</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">decimal_string</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">])</span> <span class="o">+</span> <span class="n">offset</span>
+            <span class="n">ascii_string</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;VISHWACTF&quot;</span> <span class="ow">in</span> <span class="n">ascii_string</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">ascii_string</span><span class="p">)</span>
+
+<span class="c1"># Process each line in the file</span>
+<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+    <span class="n">decimal_line</span> <span class="o">=</span> <span class="n">symbols_to_decimal</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    <span class="n">decimal_to_ascii</span><span class="p">(</span><span class="n">decimal_line</span><span class="p">)</span>
+</code></pre></div>
+
+<p>FLAG : </p>
+<blockquote>
+<p>VISHWACTF{4R3_R4N50MW4R35_B3AUTIFUL}</p>
+</blockquote>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

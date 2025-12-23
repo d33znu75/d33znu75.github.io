@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrokeOps 2: Android Device Forensics | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>BrokeOps 2: Android Device Forensics</h1>
+            <div class="writeup-meta">
+                2025-10-19 | <span class="tag">Forensics</span><span class="tag">CTF</span><span class="tag">Android</span><span class="tag">Reverse Engineering</span>
+            </div>
+            
+            <h2 id="challenge-description">Challenge Description</h2>
+<p><img class="lightbox-img" src="../images/brokeops2/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>In this challenge, I gave participants an Android disk image. In this write-up, I will use Autopsy to analyze the image.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/3.png" alt="" onclick="openLightbox(this)"></p>
+<h2 id="solution">Solution</h2>
+<p>The challenge description states that the device owner received a spoofed SMS that led to the theft of their bank account information. The goal is to analyze the Android disk image to find evidence of the spoofed SMS and any related activities on the device.</p>
+<p>On Android, SMS messages are typically stored in a SQLite database located at <code>/data/data/com.android.providers.telephony/databases/mmssms.db</code>.</p>
+<p>Let's navigate to that path in Autopsy and extract the <code>mmssms.db</code> file.</p>
+<p>in the database, we can look at the <code>sms</code> table to find the messages.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>We can see the last message is suspicious and related to our case:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">From</span><span class="o">:</span><span class="w"> </span><span class="n">CtH</span><span class="w"> </span><span class="o">(+</span><span class="mi">1760544288621</span><span class="o">)</span>
+
+<span class="n">Message</span><span class="o">:</span>
+
+<span class="n">Bank</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="n">withdrawal</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="mi">1000</span><span class="n">$</span><span class="w"> </span><span class="n">has</span><span class="w"> </span><span class="n">been</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">your</span><span class="w"> </span><span class="n">account</span><span class="o">,</span><span class="w"> </span><span class="n">transfer</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">EW36197</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">For</span><span class="w"> </span><span class="n">more</span><span class="w"> </span><span class="n">information</span><span class="w"> </span><span class="n">visit</span><span class="o">:</span><span class="w"> </span><span class="n">https</span><span class="o">://</span><span class="n">bit</span><span class="o">.</span><span class="na">ly</span><span class="o">/</span><span class="n">check</span><span class="o">-</span><span class="n">ch</span>
+</code></pre></div>
+
+<p>The website link is a shortened URL. When visiting it, we get redirected to a suspicious bank check page.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/5.png" alt="" onclick="openLightbox(this)"></p>
+<p>Let's input the transfer code <code>EW36197</code> on the page. The site confirms it found the transaction, providing us with a Transfer ID and a link to download the APK of the bank app.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>Downloading and analyzing the APK, we find that it is a fake banking app designed to steal user credentials.</p>
+<p>Our goal is to analyze the situation further. We can look for installed apps on the device to see if the fake banking app was installed.</p>
+<p>We find that it is indeed installed on the device.</p>
+<p>Its package name is <code>com.cthservices.cthbank</code> and its directory is located at <code>/data/app/com.cthservices.cthbank/</code>.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/7.png" alt="" onclick="openLightbox(this)"></p>
+<p>Now let's reverse engineer the APK to understand how it works and what data it might have stolen.</p>
+<p>Using jadx to decompile the APK, we can explore its code.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/9.png" alt="" onclick="openLightbox(this)"></p>
+<p>We can find the suspicious activity in the <code>ReportActivity</code> class, which does the following:</p>
+<ul>
+<li>It collects user input: account number and password</li>
+<li>
+<p>It encrypts the collected data with AES encryption in CBC mode:</p>
+<ul>
+<li>The key is hardcoded in the code: <code>51r1ng171_lb4774</code></li>
+</ul>
+<p><img class="lightbox-img" src="../images/brokeops2/10.png" alt="" onclick="openLightbox(this)"></p>
+<ul>
+<li>The IV is the Transfer ID and it checks if it is 16 bytes long</li>
+</ul>
+<p><img class="lightbox-img" src="../images/brokeops2/11.png" alt="" onclick="openLightbox(this)"></p>
+</li>
+<li>
+<p>It saves the encrypted data to a file named <code>enc-collect</code> in the app's internal storage</p>
+</li>
+</ul>
+<p><img class="lightbox-img" src="../images/brokeops2/12.png" alt="" onclick="openLightbox(this)"></p>
+<ul>
+<li>Then it sends the encrypted data along with device information to a remote server</li>
+</ul>
+<p><img class="lightbox-img" src="../images/brokeops2/13-0.png" alt="" onclick="openLightbox(this)">
+<img class="lightbox-img" src="../images/brokeops2/13-1.png" alt="" onclick="openLightbox(this)"></p>
+<p>Let's extract the encrypted data from the device image. We can find it in the app's internal storage at <code>/data/data/com.cthservices.cthbank/files/enc-collect</code>.</p>
+<p><img class="lightbox-img" src="../images/brokeops2/14.png" alt="" onclick="openLightbox(this)"></p>
+<p>We have the AES key <code>51r1ng171_lb4774</code> and the IV is the Transfer ID <code>#009R147E5236D9A</code> that we obtained from the website (it is 16 bytes long).</p>
+<p>Using a Python script or CyberChef, we can decrypt the file:</p>
+<p><img class="lightbox-img" src="../images/brokeops2/15.png" alt="" onclick="openLightbox(this)"></p>
+<p>Flag: <code>AKASEC{w3lc0m3_t0_CtH_B4nk____Cry_Th4t_H4rd_B4nk}</code></p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

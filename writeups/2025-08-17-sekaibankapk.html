@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APK Reverse Engineering: SekaiBank Challenge | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>APK Reverse Engineering: SekaiBank Challenge</h1>
+            <div class="writeup-meta">
+                2025-08-17 | <span class="tag">Reverse Engineering</span>
+            </div>
+            
+            <h2 id="introduction">Introduction</h2>
+<p>This write-up covers an APK reverse-engineering challenge from SekaiCTF 2025. The goal was to understand how the app signs API requests and to reproduce the signature generation so we could call the protected <code>/api/flag</code> endpoint and retrieve the flag.</p>
+<h2 id="initial-analysis">Initial analysis</h2>
+<p>After installing the app, I found a login screen requiring a username and password, with a registration option.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>After registering, the app asks to set a PIN, then opens the main dashboard. The account starts with a $1,000 balance and has send/receive functionality.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/3.png" alt="" onclick="openLightbox(this)"></p>
+<p>I enabled network logging to inspect the requests the app makes and observed calls to the API at:</p>
+<div class="codehilite"><pre><span></span><code>https://sekaibank-api.chals.sekai.team/api/
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/sekai2025/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>The requests include an Authorization header (a JWT) and an <code>X-Signature</code> header.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/5.png" alt="" onclick="openLightbox(this)"></p>
+<h2 id="decompilation">Decompilation</h2>
+<p>I used jadx to decompile the APK and explored the app's package structure. The main activity is in <code>com.sekai.bank</code>.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>The networking code is under <code>com.sekai.bank.network</code>. I found an endpoint used to fetch the flag and the request model used for it.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/7.png" alt="" onclick="openLightbox(this)">
+<img class="lightbox-img" src="../images/sekai2025/8.png" alt="" onclick="openLightbox(this)"></p>
+<p>The flag endpoint accepts a POST to <code>/api/flag</code> with a JSON body that matches the <code>FlagRequest</code> model. The body contains a boolean <code>unmask_flag</code>, so sending <code>{"unmask_flag": true}</code> should request the unmasked flag.</p>
+<p>I attempted the request from Burp Suite, but the server rejected it with an "invalid signature" error.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/9.png" alt="" onclick="openLightbox(this)"></p>
+<h2 id="finding-the-signature-algorithm">Finding the signature algorithm</h2>
+<p>In <code>com.sekai.bank.network</code> there is a <code>SignatureInterceptor</code> class which adds the <code>X-Signature</code> header. The <code>generateSignature</code> method constructs a string from the HTTP method, endpoint path, and body, then uses the app's signing certificate as the HMAC key.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/10.png" alt="" onclick="openLightbox(this)"></p>
+<p>Concretely, the flow is:
+- Build the string: METHOD + "/api" + endpoint_path + body
+- Obtain the app's signing certificate fingerprint (SHA-256)
+- Use the certificate bytes as the HMAC key and compute HMAC-SHA256 over the string</p>
+<p>The app's SHA-256 signing-fingerprint (extracted from the APK) was:</p>
+<div class="codehilite"><pre><span></span><code>SHA-256 Fingerprint: 3F 3C F8 83 0A CC 96 53 0D 55 64 31 7F E4 80 AB 58 1D FC 55 EC 8F E5 5E 67 DD DB E1 FD B6 05 BE
+</code></pre></div>
+
+<p>In Jadx you can find the Signature certificate in APK folder</p>
+<p><img class="lightbox-img" src="../images/sekai2025/11.png" alt="" onclick="openLightbox(this)"></p>
+<h2 id="reproducing-the-signature">Reproducing the signature</h2>
+<p>To call <code>/api/flag</code> we must reproduce the same signature the app generates. The important details are:</p>
+<ul>
+<li>HTTP method: POST</li>
+<li>Endpoint path (used in the signed string): <code>/flag</code> (the interceptor prepends <code>/api</code> when building the signed string)</li>
+<li>Body: <code>{"unmask_flag": true}</code> (compact JSON, no extra whitespace)</li>
+</ul>
+<p>Below is a Python script that reproduces the signing process and performs the request. It uses the SHA-256 fingerprint as the HMAC key (binary form).</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+
+<span class="n">hex_fingerprint</span> <span class="o">=</span> <span class="s2">&quot;3F3CF8830ACC96530D5564317FE480AB581DFC55EC8FE55E67DDDBE1FDB605BE&quot;</span>
+<span class="n">key_bytes</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">hex_fingerprint</span><span class="p">)</span>
+
+<span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;POST&quot;</span>
+<span class="n">endpoint_path</span> <span class="o">=</span> <span class="s2">&quot;/flag&quot;</span>
+<span class="n">body_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;unmask_flag&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">body_dict</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">))</span>
+<span class="n">data_to_sign</span> <span class="o">=</span> <span class="n">method</span> <span class="o">+</span> <span class="s2">&quot;/api&quot;</span> <span class="o">+</span> <span class="n">endpoint_path</span> <span class="o">+</span> <span class="n">body</span>
+
+<span class="n">signature</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key_bytes</span><span class="p">,</span> <span class="n">data_to_sign</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span> <span class="c1"># compute HMAC-SHA256 signatu&gt;signature = signature.lower()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;X-Signature: </span><span class="si">{</span><span class="n">signature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Output:</p>
+<div class="codehilite"><pre><span></span><code>X-Signature: 440ba2925730d137259f297fd6fba02af2f7b6c414dd16a1ac336e9047cdb8f5
+</code></pre></div>
+
+<p>Now lets use this signature in our API request to <code>/api/flag</code> using Burp Suite.</p>
+<p><img class="lightbox-img" src="../images/sekai2025/12.png" alt="" onclick="openLightbox(this)"></p>
+<p>And voilà! we have successfully got the flag:</p>
+<div class="codehilite"><pre><span></span><code><span class="nv">SEKAI</span>{<span class="nv">are</span><span class="o">-</span><span class="nv">you</span><span class="o">-</span><span class="nv">ready</span><span class="o">-</span><span class="k">for</span><span class="o">-</span><span class="nv">the</span><span class="o">-</span><span class="nv">real</span><span class="o">-</span><span class="nv">challenge</span>?}
+</code></pre></div>
+
+<p>Here is a Python script to automate the API request:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="n">hex_fingerprint</span> <span class="o">=</span> <span class="s2">&quot;3F3CF8830ACC96530D5564317FE480AB581DFC55EC8FE55E67DDDBE1FDB605BE&quot;</span> 
+<span class="n">key_bytes</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">hex_fingerprint</span><span class="p">)</span>
+
+<span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;POST&quot;</span>
+<span class="n">endpoint_path</span> <span class="o">=</span> <span class="s2">&quot;/flag&quot;</span>
+<span class="n">body_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;unmask_flag&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">body_dict</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">))</span>
+<span class="n">data_to_sign</span> <span class="o">=</span> <span class="n">method</span> <span class="o">+</span> <span class="s2">&quot;/api&quot;</span> <span class="o">+</span> <span class="n">endpoint_path</span> <span class="o">+</span> <span class="n">body</span>
+
+<span class="n">signature</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key_bytes</span><span class="p">,</span> <span class="n">data_to_sign</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+<span class="n">signature</span> <span class="o">=</span> <span class="n">signature</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://sekaibank-api.chals.sekai.team/api/flag&quot;</span>
+<span class="n">bearer_token</span> <span class="o">=</span> <span class="s2">&quot;&lt;REDACTED_BEARER_TOKEN&gt;&quot;</span>  <span class="c1"># replace with a real token obtained </span>
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">bearer_token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;X-Signature&quot;</span><span class="p">:</span> <span class="n">signature</span><span class="p">,</span>
+    <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">body</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Happy reversing!</p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

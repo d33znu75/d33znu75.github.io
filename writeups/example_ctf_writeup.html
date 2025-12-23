@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cracking the Code: Web Challenge Analysis | CTF Writeups</title>
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <h1>[root@ctf ~]# WRITEUPS</h1>
+        <p class="tagline">Exploring the shadows of cybersecurity challenges...</p>
+    </header>
+    
+    <nav>
+        <a href="../index.html">Home</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../index.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Cracking the Code: Web Challenge Analysis</h1>
+            <div class="writeup-meta">
+                2025-12-20 | <span class="tag">"web"</span><span class="tag">"sql-injection"</span><span class="tag">"ctf"</span>
+            </div>
+            
+            <h2 id="overview">Overview</h2>
+<p>This writeup covers the solution to a challenging web-based CTF problem that required finding and exploiting an SQL injection vulnerability hidden in a login form.</p>
+<h2 id="challenge-description">Challenge Description</h2>
+<p>The challenge provided a simple login interface with a username and password field. The goal was to gain access to the admin panel without knowing the actual credentials.</p>
+<h2 id="reconnaissance">Reconnaissance</h2>
+<h3 id="initial-analysis">Initial Analysis</h3>
+<p>First, I examined the HTML source of the login page:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">&lt;</span><span class="nt">form</span> <span class="na">method</span><span class="o">=</span><span class="s">&quot;POST&quot;</span> <span class="na">action</span><span class="o">=</span><span class="s">&quot;/login&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;text&quot;</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;username&quot;</span> <span class="na">placeholder</span><span class="o">=</span><span class="s">&quot;Username&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;password&quot;</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;password&quot;</span> <span class="na">placeholder</span><span class="o">=</span><span class="s">&quot;Password&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">button</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;submit&quot;</span><span class="p">&gt;</span>Login<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">form</span><span class="p">&gt;</span>
+</code></pre></div>
+
+<p>The form was using POST requests, which is a good sign that user input was being processed server-side.</p>
+<h2 id="vulnerability-discovery">Vulnerability Discovery</h2>
+<h3 id="testing-for-sql-injection">Testing for SQL Injection</h3>
+<p>I began testing the username field with various SQL injection payloads:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">admin</span><span class="s1">&#39; --</span>
+<span class="s1">&#39;</span><span class="w"> </span><span class="k">OR</span><span class="w"> </span><span class="s1">&#39;1&#39;</span><span class="o">=</span><span class="s1">&#39;1</span>
+<span class="s1">admin&#39;</span><span class="w"> </span><span class="o">#</span>
+</code></pre></div>
+
+<p>After trying several combinations, I discovered that the application was vulnerable to SQL injection through the username parameter.</p>
+<h2 id="exploitation">Exploitation</h2>
+<h3 id="the-winning-payload">The Winning Payload</h3>
+<p>The successful payload was:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Username</span><span class="o">:</span><span class="w"> </span><span class="n">admin</span><span class="err">&#39;</span><span class="w"> </span><span class="o">--</span>
+<span class="n">Password</span><span class="o">:</span><span class="w"> </span><span class="n">anything</span>
+</code></pre></div>
+
+<p>This works because the SQL query being executed is likely something like:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;admin&#39;</span><span class="w"> </span><span class="c1">--&#39; AND password = &#39;anything&#39;</span>
+</code></pre></div>
+
+<p>The <code>--</code> comments out the password check, allowing us to authenticate as admin without knowing the password.</p>
+<h2 id="flag">Flag</h2>
+<p>After successfully logging in, the admin panel displayed the flag:</p>
+<div class="codehilite"><pre><span></span><code>FLAG{sql_inj3ction_is_d4ng3rous}
+</code></pre></div>
+
+<h2 id="key-learnings">Key Learnings</h2>
+<ul>
+<li><strong>Input Validation</strong>: Always validate and sanitize user input</li>
+<li><strong>Parameterized Queries</strong>: Use prepared statements to prevent SQL injection</li>
+<li><strong>Defense in Depth</strong>: Multiple layers of security are better than relying on a single mechanism</li>
+</ul>
+<h2 id="mitigation-strategies">Mitigation Strategies</h2>
+<p>For developers, here are the recommended fixes:</p>
+<ol>
+<li>Use parameterized queries/prepared statements</li>
+<li>Implement input validation and whitelist allowed characters</li>
+<li>Use ORM frameworks that escape dangerous characters</li>
+<li>Implement rate limiting on login attempts</li>
+<li>Use strong authentication mechanisms</li>
+</ol>
+<h2 id="conclusion">Conclusion</h2>
+<p>This challenge demonstrates the dangers of improper input handling. SQL injection remains a critical vulnerability, and developers must be vigilant in their defense strategies.</p>
+<hr />
+<p><strong>Difficulty</strong>: Medium<br />
+<strong>Time Taken</strong>: 15 minutes<br />
+<strong>Tools Used</strong>: Burp Suite, SQLMap</p>
+        </article>
+    </div>
+    
+    <footer>
+        <p>Dark Goth CTF Writeup Blog</p>
+        <p>Generated on 2025-12-20 18:59:44</p>
+    </footer>
+</body>
+</html>

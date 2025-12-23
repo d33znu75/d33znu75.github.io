@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Apocalypse 2024: Hacker Royale CTF | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Cyber Apocalypse 2024: Hacker Royale CTF</h1>
+            <div class="writeup-meta">
+                2024-03-14 | <span class="tag">CTF</span>
+            </div>
+            
+            <p>i played Hack The Box Cyber Apocalypse 2024: Hacker Royale CTF and really enjoyed it</p>
+<p>we were 4 players on the team Stl3brgr we managed to get the 308th Rank</p>
+<p>i solved 7 out of 10 Forensics Challenges, with some other challs in Reverse, Misc category</p>
+<p><img class="lightbox-img" src="../images/htb-hacker-royal/rank.png" alt="" onclick="openLightbox(this)"></p>
+<p>i will not write all the forensics challenges solutions since there are many write ups of them online</p>
+<p>but i will only write the <code>Colored Squares</code> challnege since it has less solves (23 solves i guess)</p>
+<p><img class="lightbox-img" src="../images/htb-hacker-royal/chall.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="colored-squares-challenge">Colored Squares challenge :</h3>
+<p>In this challenge, we have an attachment that is a zip file containing a folder. Inside this folder, there are many subfolders, each containing further subfolders. In total, there are 2727 folders, and all of them are empty.</p>
+<p><img class="lightbox-img" src="../images/htb-hacker-royal/1.gif" alt="" onclick="openLightbox(this)"></p>
+<p>After a quick search, I found that there is an esoteric programming language which encodes the program entirely into the directory structure called <a href="https://esolangs.org/wiki/Folders">Folders</a>.</p>
+<p>After installing it using pip:</p>
+<p><code>pip install Folders</code></p>
+<p>To execute the program, you need to run:</p>
+<p><code>Folders &lt;main folder&gt;</code></p>
+<p>We got the program running, asking us to input the flag character by character in decimal.</p>
+<p><img class="lightbox-img" src="../images/htb-hacker-royal/2.png" alt="" onclick="openLightbox(this)"></p>
+<p>and to see the program code in python you need to use the option <code>-l</code></p>
+<p><code>Folders -l src/</code></p>
+<p>and the program code is:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Enter the flag in decimal (one character per line) :</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">var_0</span> <span class="o">=</span> <span class="nb">input</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">var_0</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="n">var_0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">var_0</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">var_0</span> <span class="o">=</span> <span class="n">var_0</span>
+<span class="n">var_1</span> <span class="o">=</span> <span class="nb">input</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">var_1</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="n">var_1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">var_1</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">var_1</span> <span class="o">=</span> <span class="n">var_1</span>
+<span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<span class="n">var_21</span> <span class="o">=</span> <span class="nb">input</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">var_21</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+    <span class="n">var_21</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">var_21</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">var_21</span> <span class="o">=</span> <span class="n">var_21</span>
+<span class="k">if</span> <span class="p">(((</span><span class="n">var_7</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_18</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_8</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_9</span><span class="p">))):</span>
+    <span class="k">if</span> <span class="p">(((</span><span class="n">var_6</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">var_10</span><span class="p">))</span> <span class="o">==</span> <span class="p">(((</span><span class="n">var_16</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">var_20</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="mi">12</span><span class="p">))):</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">var_8</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_14</span><span class="p">))</span> <span class="o">==</span> <span class="p">(((</span><span class="n">var_13</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_18</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="p">))):</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">var_19</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">var_6</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="p">(((</span><span class="n">var_9</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_17</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span><span class="p">))):</span>
+                    <span class="k">if</span> <span class="p">(((</span><span class="n">var_11</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">var_5</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">7</span><span class="p">)))</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">)):</span>
+                        <span class="k">if</span> <span class="p">(((</span><span class="n">var_5</span><span class="p">)</span> <span class="o">+</span> <span class="p">((</span><span class="n">var_2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="p">)))</span> <span class="o">==</span> <span class="p">(</span><span class="n">var_1</span><span class="p">)):</span>
+                            <span class="k">if</span> <span class="p">(((</span><span class="n">var_16</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">9</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_13</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">4</span><span class="p">))):</span>
+                                <span class="k">if</span> <span class="p">(((</span><span class="n">var_12</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">3</span><span class="p">))</span> <span class="o">==</span> <span class="p">(</span><span class="mi">17</span><span class="p">)):</span>
+                                    <span class="k">if</span> <span class="p">((((</span><span class="n">var_4</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_5</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="n">var_12</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_14</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">20</span><span class="p">))):</span>
+                                        <span class="k">if</span> <span class="p">((((</span><span class="n">var_12</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_15</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">var_14</span><span class="p">))</span> <span class="o">==</span> <span class="p">(</span><span class="mi">24</span><span class="p">)):</span>
+                                            <span class="k">if</span> <span class="p">((</span><span class="n">var_18</span><span class="p">)</span> <span class="o">==</span> <span class="p">((</span><span class="mi">173</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_4</span><span class="p">))):</span>
+                                                <span class="k">if</span> <span class="p">((</span><span class="n">var_6</span><span class="p">)</span> <span class="o">==</span> <span class="p">((</span><span class="mi">63</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">var_5</span><span class="p">))):</span>
+                                                    <span class="k">if</span> <span class="p">(((</span><span class="mi">32</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_16</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_7</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_0</span><span class="p">))):</span>
+                                                        <span class="k">if</span> <span class="p">((</span><span class="mi">125</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">var_21</span><span class="p">)):</span>
+                                                            <span class="k">if</span> <span class="p">(((</span><span class="n">var_3</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_2</span><span class="p">))</span> <span class="o">==</span> <span class="p">(</span><span class="mi">57</span><span class="p">)):</span>
+                                                                <span class="k">if</span> <span class="p">(((</span><span class="n">var_17</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_15</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_18</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">))):</span>
+                                                                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Good job! :)&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The program prompts the user to enter a flag in decimal and then checks if the entered values satisfy a series of conditions. 
+To obtain the flag, we need to reverse it. 
+Since the flag format is HTB{}, I replaced the known variables with their values.
+And after that we only got some characters.
+<code>HTB{ 3r    t3      r }</code></p>
+<div class="codehilite"><pre><span></span><code><span class="k">if</span> <span class="p">(((</span><span class="n">var_7</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_18</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_8</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_9</span><span class="p">))):</span>
+    <span class="k">if</span> <span class="p">(((</span><span class="mi">114</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">var_10</span><span class="p">))</span> <span class="o">==</span> <span class="p">(((</span><span class="n">var_16</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">var_20</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="mi">12</span><span class="p">))):</span>
+        <span class="k">if</span> <span class="p">(((</span><span class="n">var_8</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_14</span><span class="p">))</span> <span class="o">==</span> <span class="p">(((</span><span class="n">var_13</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_18</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="p">))):</span>
+                <span class="k">if</span> <span class="p">(((</span><span class="n">var_9</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_17</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span><span class="p">))):</span>
+                            <span class="k">if</span> <span class="p">(((</span><span class="n">var_16</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">9</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_13</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">4</span><span class="p">))):</span>
+                                    <span class="k">if</span> <span class="p">((((</span><span class="n">var_4</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">51</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="mi">51</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_14</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">20</span><span class="p">))):</span>
+                                        <span class="k">if</span> <span class="p">((((</span><span class="mi">51</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_15</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">var_14</span><span class="p">))</span> <span class="o">==</span> <span class="p">(</span><span class="mi">24</span><span class="p">)):</span>
+                                            <span class="k">if</span> <span class="p">((</span><span class="n">var_18</span><span class="p">)</span> <span class="o">==</span> <span class="p">((</span><span class="mi">173</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_4</span><span class="p">))):</span>
+                                                    <span class="k">if</span> <span class="p">(((</span><span class="mi">32</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_16</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_7</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">72</span><span class="p">))):</span>
+                                                                <span class="k">if</span> <span class="p">(((</span><span class="n">var_17</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_15</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_18</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">))):</span>
+                                                                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Good job! :)&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Is it a dead end? NO.</p>
+<p>There are two solutions:
+The first involves guessing the position of the underscore and checking if the conditions are correct (not getting a decimal number or special characters).
+Alternatively, there's the sick solution that I attempted, which is brute-forcing variables. Brute-forcing all the variables is possible but it would take a very long time, possibly until the CTF ends.
+So, I only brute-forced three variables as an example, considering these conditions:</p>
+<div class="codehilite"><pre><span></span><code> <span class="k">if</span> <span class="p">((((</span><span class="n">var_4</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">51</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="mi">51</span><span class="p">))</span> <span class="o">==</span> <span class="p">((</span><span class="n">var_14</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">20</span><span class="p">))):</span>
+    <span class="k">if</span> <span class="p">((((</span><span class="mi">51</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">var_15</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">var_14</span><span class="p">))</span> <span class="o">==</span> <span class="p">(</span><span class="mi">24</span><span class="p">)):</span>
+</code></pre></div>
+
+<p>Each time my script gives me a value, I try to solve the equations.
+Then, I noticed that the first variable, var_4, is z, var_14 is f, and var_15 is 0.
+It occurred to me that maybe the first word is "zero" (z3r0) and the last word is "folders" (f0ld3rs). Finally, I got the full flag.</p>
+<p>FLAG : </p>
+<blockquote>
+<p>HTB{z3r0_byt3_f0ld3rs}</p>
+</blockquote>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

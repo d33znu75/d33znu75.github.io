@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AKASEC CTF 2024 Challenges | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>AKASEC CTF 2024 Challenges</h1>
+            <div class="writeup-meta">
+                2024-06-10 | <span class="tag">Forensics</span><span class="tag">Steganography</span><span class="tag">Malware</span>
+            </div>
+            
+            <h1 id="forensics-category">Forensics Category:</h1>
+<h3 id="portugal">Portugal :</h3>
+<h1 id="description">Description :</h1>
+<blockquote>
+<p>I accidentally left my computer unlocked at the coffee shop while I stepped away. I'm sure that someone took advantage of the opportunity and was searching for something.</p>
+<p>Author : d33znu75</p>
+<p>Attachment : <a href="https://www.mediafire.com/file/7fxn5r9ynwxqj2h/memdump1.mem/file">memdump1.mem</a></p>
+</blockquote>
+<p>In this challenge, we have a memory dump. The challenge description says "was searching for something."</p>
+<p>Using Volatility 2, we find the chrome.exe process, so let's check the Chrome history.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mem1.png" alt="" onclick="openLightbox(this)"></p>
+<p>I used a Volatility 2 plugin from <a href="https://blog.superponible.com/2014/08/31/volatility-plugin-chrome-history/">superponiblog</a></p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mem2.png" alt="" onclick="openLightbox(this)"></p>
+<p>We can see the flag in parts, so let's arrange them.</p>
+<p>FLAG : </p>
+<blockquote>
+<p>AKASEC{V0L4T1L1TY_f0r_chr0m3_s34rch_h1st0ry}</p>
+</blockquote>
+<h3 id="sussy">Sussy :</h3>
+<h1 id="description_1">Description :</h1>
+<blockquote>
+<p>Something Fishy's Going on in Our Network</p>
+<p>Author : d33znu75</p>
+<p>Attachment : <a href="https://www.mediafire.com/file/mghcng82kcl3fo5/packet.pcapng/file">packet.pcapng</a></p>
+</blockquote>
+<p>In this challenge, we have a pcap file. Basic analysis reveals some suspicious requests.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/ex1.png" alt="" onclick="openLightbox(this)"></p>
+<p>Decoding the first subdomain from hex, we find a 7z extension.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/ex2.png" alt="" onclick="openLightbox(this)"></p>
+<p>Let's retrieve that zip file by extracting it from the DNS traffic:</p>
+<p><code>tshark -T fields -e dns.qry.name -r packet.pcapng | grep akasec.ma | uniq | sed 's/.akasec.ma//' | tr -d '\n'</code></p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/ex3.png" alt="" onclick="openLightbox(this)"></p>
+<p>We discover that the 7z file is password-protected, so let's crack it with John the Ripper.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/ex4.png" alt="" onclick="openLightbox(this)"></p>
+<p>After extracting the zip, we find another password-protected PDF. Let's crack it using <code>pdfcracker</code>.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/ex5.png" alt="" onclick="openLightbox(this)"></p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/ex6.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : </p>
+<blockquote>
+<p>AKASEC{PC4P_DNS_3xf1ltr4t10n_D0n3!!}</p>
+</blockquote>
+<h3 id="sharing-is-not-caring">Sharing is not Caring :</h3>
+<h1 id="description_2">Description :</h1>
+<blockquote>
+<p>My friends and I use the same computer on campus and have a shared folder to exchange files. After submitting the flag for the challenge, it was leaked, and someone obtained it without my knowledge. I'm unsure how they got it.</p>
+<p>Author : d33znu75</p>
+<p>Attachments : <a href="https://www.mediafire.com/file/kbml0x3rrjqkwlx/network.pcapng/file">network.pcapng</a> , <a href="https://www.mediafire.com/file/hn4m2hufc0jzf3a/disk.ad1/file">disk.ad1</a></p>
+</blockquote>
+<p>Analyzing the pcap file, we find that the user visited two websites:</p>
+<div class="codehilite"><pre><span></span><code><span class="mi">1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="n">website</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">download</span><span class="w"> </span><span class="n">link</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">malware</span><span class="o">.</span>
+<span class="mi">2</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="n">flag</span><span class="w"> </span><span class="n">submission</span><span class="w"> </span><span class="n">website</span><span class="o">.</span>
+</code></pre></div>
+
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mal1.png" alt="" onclick="openLightbox(this)"></p>
+<p>After downloading the malware and analyzing it, we use two methods:</p>
+<p>First, we use the strings command on the file to reveal the PowerShell code.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mal2.png" alt="" onclick="openLightbox(this)"></p>
+<p>Alternatively, VirusTotal shows that the malware drops an <code>sslkey.log</code> file in <code>C:\</code>.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mal3.png" alt="" onclick="openLightbox(this)"></p>
+<p>Decoding the PowerShell script, we obtain:</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mal4.png" alt="" onclick="openLightbox(this)"></p>
+<p>Next, let's look for the file in the <code>.ad1</code> image using FTK Imager.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mal5.png" alt="" onclick="openLightbox(this)"></p>
+<p>After extracting it, we decrypt the traffic to retrieve the flag.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/mal6.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : </p>
+<blockquote>
+<p>AKASEC{B4s1c_M4lw4r3_4nd_PC4P_4n4lys1s}</p>
+</blockquote>
+<h1 id="steganography-category">Steganography Category:</h1>
+<h3 id="matry-steg-oshka">Matry-Steg-oshka :</h3>
+<h1 id="description_3">Description :</h1>
+<blockquote>
+<p>I hope you do not get a headache.</p>
+<p>Author : d33znu75</p>
+<p>Hints :
+  "when you hear "the flag is" next part is corrupted, no noise reduction but you can see the flag 😘"
+  "this is a steganography challenege. in the voice audio, the flag hidden in the corrupted part and you must SEE it (it is the reason why it is corrupted). switch it, a tool is needed."</p>
+<p>Attachment : <a href="https://www.mediafire.com/file/fp0141309t0y1kh/National_Anthem_of_Palestine.wav/file">National_Anthem_of_Palestine.wav</a></p>
+</blockquote>
+<p>In this challenge, we have an audio WAV file. By opening it with any spectrum analyzer, we find some words at the end of the audio.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/steg1.png" alt="" onclick="openLightbox(this)"></p>
+<p>Using CFMVSUJD, we extract a file with steghide.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/steg2.png" alt="" onclick="openLightbox(this)"></p>
+<p>Opening the file with a hex editor, we see that every 16 bytes are reversed. </p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/stegrev.png" alt="" onclick="openLightbox(this)"></p>
+<p>Let's run a Python script to fix that.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">reverse_chunks</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">16</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+    <span class="n">reversed_data</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">):</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">chunk_size</span><span class="p">]</span>
+        <span class="n">reversed_data</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">chunk</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">output_path</span> <span class="o">=</span> <span class="n">file_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.wav&#39;</span><span class="p">,</span> <span class="s1">&#39;_reversed.wav&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">reversed_data</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reversed file saved as </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Usage: python reverse_wav.py &lt;file_path&gt;&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">reverse_chunks</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>We received another audio file of a woman speaking, but there is some noise. The hint says that "we must see it." By converting the WAV file to a PNG using <a href="https://directmusic.me/wav2png/">wav2png</a>, we can see the flag.</p>
+<p><img class="lightbox-img" src="https://github.com/d33znu75/AKASEC-CTF-2024-challenges/raw/main/images/left_channel.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : </p>
+<blockquote>
+<p>AKASEC{h1dd3n_1n_r4w}</p>
+</blockquote>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

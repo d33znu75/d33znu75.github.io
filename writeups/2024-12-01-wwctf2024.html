@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WWCTF - Black Meet Wukong Write Up (Forensics) | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>WWCTF - Black Meet Wukong Write Up (Forensics)</h1>
+            <div class="writeup-meta">
+                2024-12-01 | <span class="tag">Forensics</span><span class="tag">Malware</span><span class="tag">Reverse Engineering</span>
+            </div>
+            
+            <p>I played WWCTF and really enjoyed solving the Black Meet Wukong challenges in the forensics category (two challenges in total). As always, I managed to complete the entire category, but I’m only writing about these particular challenges because they were both difficult and enjoyable. I didn't have time to dive into the reverse engineering category, but overall, it was a great CTF.</p>
+<h2 id="challenge-1-forgot-password">Challenge 1 : Forgot Password</h2>
+<p><img class="lightbox-img" src="../images/wwctf2024/chall1.png" alt="" onclick="openLightbox(this)"> </p>
+<p>We were given a disk image, <code>Evidance.ad1</code>, and our task was to analyze it in order to retrieve the machine's security question.</p>
+<p>After opening the image file with FTK Imager, we navigated to the <code>system32/config/</code> folder, which contains the Windows Registry files. From here, we proceeded to extract the information needed to uncover the Windows security question.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/config.png" alt="" onclick="openLightbox(this)"></p>
+<p>Since we have the Registry files, we can upload them to this tool <a href="https://www.nirsoft.net/utils/security_questions_view.html">NirSoft - SecurityQuestionsView</a> that allows us to view the security questions and their corresponding answers stored in the Registry for all users. This tool simplifies the process by parsing the Registry data and presenting the security information in an accessible format.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/nirsoft.png" alt="" onclick="openLightbox(this)"></p>
+<h4 id="flag-wwfi_love_security_questions_s0_muchhhhhhhhhhhhhhhhh">FLAG : <code>wwf{I_love_security_questions_s0_muChhhhhhhhhhhhhhhhh}</code></h4>
+<h2 id="challenge-2-black-meet-wukong">Challenge 2 : Black Meet Wukong</h2>
+<p><img class="lightbox-img" src="../images/wwctf2024/chall2.png" alt="" onclick="openLightbox(this)"></p>
+<p>Continuing with the first challenge, our task now is to find the two parts of the flag. The machine system has been attacked, so let’s begin our analysis to uncover the necessary information.</p>
+<p>By examining the system files, we noticed that many files have the <code>.odin</code> extension added to their filenames. This is strong evidence of a ransomware attack.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/odin.png" alt="" onclick="openLightbox(this)"></p>
+<p>After conducting some analysis, I found two possible ways to trace the malware program. The first method involves examining the Microsoft Edge browser history. Specifically, in the following directory:</p>
+<p><code>C:\Users\{USER}\AppData\Local\Microsoft\Edge\User Data\Default\</code></p>
+<p><img class="lightbox-img" src="../images/wwctf2024/edge.png" alt="" onclick="openLightbox(this)"></p>
+<p>There’s an SQLite database file called <code>History</code>, which contains a record of all the URLs visited by the user. By querying this database, we can potentially find suspicious URLs that might lead us to the malware source or provide other clues related to the attack. Let’s take a closer look at the history entries to identify anything unusual.</p>
+<p>Upon reviewing the browser history, I found a MediaFire link where the malware was downloaded from. However, this might not always be a reliable method, as MediaFire and similar file-sharing platforms typically block harmful programs and flag suspicious uploads. This is exactly what happened during the CTF—the link was eventually blocked, preventing us from directly downloading the malware.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/urls.jpg" alt="" onclick="openLightbox(this)"></p>
+<p>Another method to find the malware, if it hasn't been removed, is to check the system's command history. Specifically, we can look at the file:</p>
+<p><code>APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</code></p>
+<p><img class="lightbox-img" src="../images/wwctf2024/pslog.png" alt="" onclick="openLightbox(this)"></p>
+<p>This text file stores a history of all commands executed in PowerShell.</p>
+<p>And we see a base64 encoded command, When decoding it, we observe that it executes malware using the following command:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">Start-Process</span> <span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">wukong</span><span class="p">\</span><span class="n">AppData</span><span class="p">\</span><span class="n">Local</span><span class="p">\</span><span class="n">Microsoft</span><span class="p">\</span><span class="n">Windows</span><span class="p">\</span><span class="n">bLAcKmEeTWUkOng</span><span class="p">.</span><span class="n">exe</span>
+</code></pre></div>
+
+<p>We have the path to the malware. Let's export it and begin our analysis.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/path.png" alt="" onclick="openLightbox(this)"></p>
+<p>It is a PE32+ executable created using Python. To reverse it, we’ll extract its contents using <a href="https://github.com/extremecoders-re/pyinstxtractor/">pyinstxtractor</a>, identify the entry point, and then decrypt it using <a href="https://pylingual.io/">pylingual</a> to view the full decompiled source code.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/pyex.png" alt="" onclick="openLightbox(this)"></p>
+<p>Here is the full source code. Since it's too long, I uploaded it in a gist : https://gist.github.com/d33znu75/98e85a5120dad6b04541f3f92dc06ae9</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/dec.png" alt="" onclick="openLightbox(this)"></p>
+<h5 id="warning-do-not-run-this-malware-on-your-computerits-a-real-threat-always-use-a-sandbox-or-a-controlled-environment-for-analysis"><code>Warning: Do not run this malware on your computer—it's a real threat. Always use a sandbox or a controlled environment for analysis.</code></h5>
+<p>Now lets break the code and see what it does.</p>
+<h3 id="first-file-encryption">First : File Encryption</h3>
+<p>The malware encrypts files on the victim's system, The encryption involves multiple steps:
+Fernet Encryption then XOR then AES.</p>
+<p>The malware searches for files in those directories (Documents, Pictures, Desktop, Downloads) and encrypts them, appending the .odin extension to the encrypted files. It also deletes the original files after encryption.</p>
+<p>To decrypt the files, we have all the necessary keys in the code. Let's reverse the process and decrypt them.</p>
+<p>Here is my decryption code:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">Cryptodome.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+<span class="kn">from</span> <span class="nn">Cryptodome.Util.Padding</span> <span class="kn">import</span> <span class="n">unpad</span>
+<span class="kn">from</span> <span class="nn">cryptography.fernet</span> <span class="kn">import</span> <span class="n">Fernet</span>
+
+<span class="n">key_xori</span> <span class="o">=</span> <span class="s1">&#39;y0u_l00k_l1k3_X1sh1_&amp;_b3_my_l4dy&#39;</span>
+<span class="n">key_fernet</span> <span class="o">=</span> <span class="p">[</span><span class="sa">b</span><span class="s1">&#39;zTskoYGm68VrSiOM6J9W0PqyKTfSyraM0NydVmJvM_k=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;pcD23bRQTL1MqLS84NdPsiPdYJlwbTaal6JmulzTq4k=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;9EBQNDjmy0rGXCbVgVnrgFFsAHk4Ye1M8y1GSIx9CPY=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;663RnK5l0MQzewfpAQfYhJbL3p7ZRoR-j7I3DkXiUIk=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;I5Arxkgfo2E56VBVctFjJ-pFkeBbQg6QXMuG-gNgqq4=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;eXP1sKfkTE9PNkWR8rA9jzJqun80yMYPrzMMi65JQpw=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;56S9Sv7zUPL71w6N2OTSwxvFl_a-5zvsN6rxQI97UWU=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;gZcRMaVftMg_F9E4tNQ_etAR7_PKT_vVfWwWkMSxDQc=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;-XmaKL4uo4p0gM5ARQZtxjZ_5ecK1w53AEkWuiWDIzQ=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;ikNfBtrrX-9EBI3iKzWnBJW5wNNvi8rM4oT9BLqDJNw=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;uEikHaHAX1B20aB_bcQwUA0aO21Ai-rgYAqGfKxHKJA=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;deoHTwNvwTOuQjoy5oh9jN_ZQlLbVCvwI47D3sQt8UA=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;xuaD7BqwreniKZAvBO38MO250oO40HXboxhU8--6YQ0=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;X5GfY_zukIDPKxyzmMYFkps-Av8Ao2TQDPmckrjb3ZQ=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;CAOD7XSW4e-ON33uz5_8h6RZhorDlKg798e1RcEYSlo=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;dMphwlwO6Qh_FCdbMzseoZsWkQWPFtGx8VSiFAN2SSo=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;q4NfcRieLIKnyBwFEhUxZcR_8A3BFS_n_cIE8sFX8a4=&#39;</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;hLfAPR06xuo545qJlzlYko5f9KKuXOBrCBNgzruTV14=&#39;</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">unpad_data</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">unpad</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">aes_decrypt</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_ECB</span><span class="p">)</span>
+    <span class="n">decrypted</span> <span class="o">=</span> <span class="n">unpad_data</span><span class="p">(</span><span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">decrypted</span>
+
+<span class="k">def</span> <span class="nf">xor_decrypt</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="n">decrypted</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">([</span><span class="n">b</span> <span class="o">^</span> <span class="n">key</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data</span><span class="p">)])</span>
+    <span class="k">return</span> <span class="n">decrypted</span>
+
+<span class="k">def</span> <span class="nf">decrypt_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">output_path</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">enc_file</span><span class="p">:</span>
+        <span class="n">encrypted_data</span> <span class="o">=</span> <span class="n">enc_file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">decrypted_data</span> <span class="o">=</span> <span class="n">aes_decrypt</span><span class="p">(</span><span class="n">encrypted_data</span><span class="p">,</span> <span class="n">key_xori</span><span class="p">)</span> <span class="c1"># AES decryption</span>
+    <span class="n">decrypted_data</span> <span class="o">=</span> <span class="n">xor_decrypt</span><span class="p">(</span><span class="n">decrypted_data</span><span class="p">,</span> <span class="n">key_fernet</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c1"># XOR decryption</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">key_fernet</span><span class="p">):</span> <span class="c1"># Fernet decryption</span>
+        <span class="n">fernet</span> <span class="o">=</span> <span class="n">Fernet</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">decrypted_data</span> <span class="o">=</span> <span class="n">fernet</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">decrypted_data</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">dec_file</span><span class="p">:</span>
+        <span class="n">dec_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">decrypted_data</span><span class="p">)</span>
+
+<span class="n">encrypted_file_path</span> <span class="o">=</span> <span class="s1">&#39;wukong.png.odin&#39;</span>
+<span class="n">decrypted_file_path</span> <span class="o">=</span> <span class="s1">&#39;wukong.png&#39;</span>
+<span class="n">decrypt_file</span><span class="p">(</span><span class="n">encrypted_file_path</span><span class="p">,</span> <span class="n">decrypted_file_path</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Decryption done!!&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>When decrypting the encrypted files, I found the image named <code>wukong.png</code>, contains the first part of the flag.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/wukong.png" alt="" onclick="openLightbox(this)"></p>
+<p>Now, let's complete our analysis to obtain the second part of the flag.</p>
+<h3 id="second-data-stealing">Second : Data Stealing</h3>
+<p>The malware targets multiple Chromium-based browsers (Chrome, Opera, Brave, Edge, etc.). It specifically steals cookies and passwords then decrypt them, and also collects detailed system information from the victim's machine, such as hardware and OS details, IP address, and geolocation. This information is then compressed into a <code>.zip</code> archive and uploaded to the attacker's Telegram account using the Telegram Bot API.</p>
+<p>The malware places a ransom note <code>ODIN_WANT_TO_SAY.txt</code> on the victim's Desktop, demanding a n*de image for decryption software (😂😂).
+And it changes the victim's desktop wallpaper to an image <code>odin.jpg</code> hosted on a remote URL.</p>
+<p>After the exfiltration, the malware triggers a system restart <code>os.system('shutdown -r -t 3')</code></p>
+<p>Now we have the Telegram Bot API and the attacker's chat ID.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">TAPI</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;7772912370:AAEkDG-RH1tZfNAPRN5nmKIJekvN0tRv06Q&#39;</span>
+<span class="n">TCHATID</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;-4528960795&#39;</span>
+</code></pre></div>
+
+<p>Let's infiltrate the attacker's Telegram bot and examine the data it sent.</p>
+<p>First, let's gather information about the bot. Run the following command replacing {bot-token} with our bot ID:</p>
+<p><code>curl “https://api.telegram.org/bot{bot-token}/getMe”</code> </p>
+<p><img class="lightbox-img" src="../images/wwctf2024/getme.png" alt="" onclick="openLightbox(this)"></p>
+<p>We obtained the following information:</p>
+<ul>
+<li>The bot's status: Active</li>
+<li>The bot's username: "blackmeetwukongbot"</li>
+</ul>
+<p>You can find it on Telegram by searching for the username.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/bot.jpg" alt="" onclick="openLightbox(this)"></p>
+<p>The next step is to forward the messages to my chat. However, first, I need to send a message to the bot. After that, let's retrieve my chat ID by running the following command:</p>
+<p><code>curl “https://api.telegram.org/bot{bot-token}/getUpdates”</code></p>
+<p><img class="lightbox-img" src="../images/wwctf2024/chatid.jpg" alt="" onclick="openLightbox(this)"></p>
+<p>Now, we have the following information that will help forward the messages to me:</p>
+<ul>
+<li>Bot API : <code>7772912370:AAEkDG-RH1tZfNAPRN5nmKIJekvN0tRv06Q</code></li>
+<li>Attacker Chat ID : <code>-4528960795</code></li>
+<li>My Chat ID : <code>938182349</code></li>
+</ul>
+<p>I’ve created this script to retrieve the first 100 messages the bot has received and forward them to us. You can adjust the number of messages as needed, but I’ve limited it to the earliest messages to avoid issues with players abusing the API by sending large volumes of messages.</p>
+<p><code>powershell
+ 1..100 | ForEach-Object { Invoke-WebRequest -Uri "https://api.telegram.org/bot7772912370:AAEkDG-RH1tZfNAPRN5nmKIJekvN0tRv06Q/forwardMessage" -Method POST -ContentType "application/json" -Body ('{"from_chat_id":"-4528960795", "chat_id":"938182349", "message_id":' + $_ + '}') }</code></p>
+<p>I received several messages in my chat with the bot, including one containing a GitHub repository with a base64-encoded name.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/repo.jpg" alt="" onclick="openLightbox(this)"></p>
+<p>The repository contains the source code of the malware, and at the bottom of the code, there is a comment with a base85-encoded text. When decrypted, it reveals the second part of the flag.</p>
+<p><img class="lightbox-img" src="../images/wwctf2024/source.png" alt="" onclick="openLightbox(this)"></p>
+<p>FLAG : <code>wwf{1_D0WN104D3D_correct_814CK_MY7H_WUK0N6}</code></p>
+<p>Overall, this was a great challenge, especially the Telegram API part, where we successfully established a seamless mechanism for forwarding all messages from the attacker’s bot directly to our own Telegram account.</p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>
