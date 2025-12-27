@@ -330,6 +330,12 @@ nav a:hover {
   background-repeat: repeat;
 }
 
+/* Homepage-only: plain black welcome section */
+.homepage-intro.homepage-intro-plain {
+  background: #000000;
+  background-image: none;
+}
+
 .homepage-intro-left {
   width: 180px;
   display: flex;
