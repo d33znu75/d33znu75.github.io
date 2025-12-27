@@ -27,24 +27,8 @@
                 2025-04-13 | <span class="tag">Forensics</span><span class="tag">Malware</span>
             </div>
             
-            <h1 id="pingwin">pingwin</h1>
-<p><img class="lightbox-img" src="../images/ideh6/2.png" alt="" onclick="openLightbox(this)"></p>
-<p>In this challenge, we have a pcap file. Let's analyze it in Wireshark.</p>
-<p><img class="lightbox-img" src="../images/ideh6/4.png" alt="" onclick="openLightbox(this)"></p>
-<p>We have two protocols in the traffic: DNS and ICMP, which might indicate possible data exfiltration. Let's investigate further.</p>
-<p><img class="lightbox-img" src="../images/ideh6/5.png" alt="" onclick="openLightbox(this)"></p>
-<p>There's nothing suspicious in the DNS traffic—just queries to an invalid domain, <code>notgoogle.com</code>, with no data being transferred.</p>
-<p>Now, let's move on to the ICMP traffic.</p>
-<p><img class="lightbox-img" src="../images/ideh6/6.png" alt="" onclick="openLightbox(this)"></p>
-<p>The first ICMP (ping) request contains some data. In the first request, the data is a PNG file signature, indicating that an image is being exfiltrated through the protocol.</p>
-<p>Let's use the <code>tshark</code> command line to extract all data chunks and reconstruct the image file:</p>
-<div class="codehilite"><pre><span></span><code>tshark -r pingwin.pcapng -Y &quot;icmp &amp;&amp; ip.src == 192.168.42.173&quot; -T fields -e data.data | tr &#39;\n&#39; &#39;\0&#39; | xxd -r -p &gt; solve.png
-</code></pre></div>
-
-<p>And here is the image being exfiltrated:</p>
-<p><img class="lightbox-img" src="../images/ideh6/7.png" alt="" onclick="openLightbox(this)"></p>
-<p>FLAG : <code>IDEH{h0l4_qu3_p4s4_4l_kh4w4}</code></p>
-<h1 id="captcha">captcha</h1>
+            <p>I had the pleasure of creating forensics challenges for the IDEH v6 CTF event. In this write-up, I will detail the solution to one of the challenges I designed, which involves analyzing a ransomware attack that encrypts a PDF file after involving a fake captcha on a website. This attack is known as ClickFix attack which leverages social engineering to trick users into executing malicious payloads.</p>
+<h1 id="challenge-overview">Challenge Overview</h1>
 <p><img class="lightbox-img" src="../images/ideh6/3.png" alt="" onclick="openLightbox(this)"></p>
 <p>In this challenge, we have an encrypted PDF file and a ZIP file containing a disk image.</p>
 <p><img class="lightbox-img" src="../images/ideh6/8.png" alt="" onclick="openLightbox(this)"></p>

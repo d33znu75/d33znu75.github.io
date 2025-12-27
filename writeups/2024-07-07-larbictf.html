@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lord Larbi V2 CTF 2024 | CTF Writeups</title>
+    <title>Reverse Engineering a PyInstaller Packed Binary (Lord Larbi CTF 2024) | CTF Writeups</title>
     <link rel="icon" type="image/png" href="../assets/cursor.png">
     <link rel="stylesheet" href="../styles/style.css">
 </head>
@@ -22,42 +22,22 @@
         <a href="../featured.html" class="back-button">← Back</a>
         
         <article class="writeup">
-            <h1>Lord Larbi V2 CTF 2024</h1>
+            <h1>Reverse Engineering a PyInstaller Packed Binary (Lord Larbi CTF 2024)</h1>
             <div class="writeup-meta">
-                2024-07-07 | <span class="tag">Forensics</span><span class="tag">Malware</span>
+                2024-07-07 | <span class="tag">Reverse Engineering</span><span class="tag">Forensics</span><span class="tag">Malware</span>
             </div>
             
-            <h1 id="forensics-category">Forensics Category:</h1>
-<h3 id="emo">emo</h3>
-<h1 id="description">Description :</h1>
-<blockquote>
-<p>This app does something and then kills himself. Check what it does.</p>
-<p>Author : d33znu75</p>
-<p>Attachment : <a href="https://www.mediafire.com/file/a12zrdyoz5323ye/emo.exe/file">emo.exe</a></p>
-</blockquote>
-<p>In this challenge, we have an executable. If we run it in a sandbox, we see a message in the terminal that says "checking my secret website," then after a few seconds, it says "done! now I will kill myself."</p>
-<p><img class="lightbox-img" src="../images/larbictf/1.png" alt="" onclick="openLightbox(this)"></p>
-<p><img class="lightbox-img" src="../images/larbictf/2.png" alt="" onclick="openLightbox(this)"></p>
-<p>So, the program checks a website and performs some action with it (ping, request, etc.).</p>
-<p>We can use Wireshark to see network logs, but there is an easier way.</p>
-<p>Let's upload it to VirusTotal and check its behavior.</p>
-<p>VirusTotal helps us by analyzing programs through sandboxes and provides us with reports.</p>
-<p><img class="lightbox-img" src="../images/larbictf/3.png" alt="" onclick="openLightbox(this)"></p>
-<p>We see this website: 'cutmylifeintopieces.000webhostapp.com'</p>
-<p>Visiting it, we see a 'Get Flag' button that gives us the flag.</p>
-<p><img class="lightbox-img" src="../images/larbictf/4.png" alt="" onclick="openLightbox(this)"></p>
-<p>FLAG : </p>
-<blockquote>
-<p>AKASEC{v333ry_b4s1c_m4lw4r3_4n4lys1s_:3}</p>
-</blockquote>
-<h3 id="ransomware">Ransomware :</h3>
-<h1 id="description_1">Description :</h1>
+            <p>Lord Larbi CTF is a local CTF event we organize at our school (1337 Khouribga) every year to introduce new students to CTFs and cybersecurity. One of the challenges I created for the event involved a mini ransomware sample packed with PyInstaller.</p>
+<p>PyInstaller is a popular tool for packaging Python applications into standalone executables. However, it can also be used by malware authors to distribute malicious Python scripts.</p>
+<p>In this write-up, I’ll explain how to reverse a PyInstaller-packed binary.</p>
+<h1 id="challenge-mini-ransomware">Challenge : Mini Ransomware :</h1>
+<h3 id="description">Description :</h3>
 <blockquote>
 <p>My friend downloaded an app (asuka.exe), but it turned out to be ransomware that encrypted all his images on the desktop. Can you help him recover them?</p>
-<p>!!! PLEASE NOTE: THIS IS RANSOMWARE. DO NOT RUN IT NEAR YOUR IMAGES. Keep it safe, and if you need to test it, run it in an isolated folder with non-important images.</p>
 <p>Author : d33znu75</p>
 <p>Attachment : <a href="https://www.mediafire.com/file/hhg8qopilzauwdi/Disk.ad1/file">Disk.ad1</a></p>
 </blockquote>
+<h3 id="solution">Solution :</h3>
 <p>In this challenge, we have a .ad1 disk image, so let's open it with FTK Imager. The challenge description says that the encrypted files and the ransomware are on the desktop.</p>
 <p><img class="lightbox-img" src="../images/larbictf/11.png" alt="" onclick="openLightbox(this)"></p>
 <p>We have the ransomware (asuka.exe) and the encrypted flag (flag.png.enc), so let's export them.</p>

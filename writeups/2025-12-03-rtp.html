@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dumping an H.264 Video Stream from a Packet Capture (RTP) | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../home.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+        <a href="../about.html">ABOUT</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Dumping an H.264 Video Stream from a Packet Capture (RTP)</h1>
+            <div class="writeup-meta">
+                2025-12-03 | <span class="tag">Forensics</span><span class="tag">Wireshark</span>
+            </div>
+            
+            <h2 id="challenge-overview">Challenge Overview</h2>
+<p>In this challenge, I gave participants a PCAP containing UDP traffic. The goal is to identify what is being transmitted (RTP) and extract the underlying H.264 video streams from the capture.</p>
+<h2 id="solution">Solution</h2>
+<p>The PCAP contains a large amount of UDP traffic. When analyzing the capture in Wireshark, we can see two local UDP conversations.</p>
+<p>One conversation is from port <code>64333</code> to port <code>5004</code>, and the other is from port <code>64335</code> to port <code>5006</code>.</p>
+<p><img class="lightbox-img" src="../images/rtp/3.png" alt="" onclick="openLightbox(this)"></p>
+<p>Following one of the conversations, we see the following header in the payload:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x264</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">core</span><span class="w"> </span><span class="mi">164</span><span class="w"> </span><span class="n">r3204</span><span class="w"> </span><span class="mi">373697</span><span class="n">b</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">H</span><span class="o">.</span><span class="mi">264</span><span class="o">/</span><span class="n">MPEG</span><span class="o">-</span><span class="mi">4</span><span class="w"> </span><span class="n">AVC</span><span class="w"> </span><span class="n">codec</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Copyleft</span><span class="w"> </span><span class="mi">2003</span><span class="o">-</span><span class="mi">2025</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">videolan</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">x264</span><span class="o">.</span><span class="n">html</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">options</span><span class="p">:</span><span class="w"> </span><span class="n">cabac</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">ref</span><span class="o">=</span><span class="mi">3</span><span class="w"> </span><span class="n">deblock</span><span class="o">=</span><span class="mi">1</span><span class="p">:</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="w"> </span><span class="n">analyse</span><span class="o">=</span><span class="mh">0x3</span><span class="p">:</span><span class="mh">0x113</span><span class="w"> </span><span class="n">me</span><span class="o">=</span><span class="n">hex</span><span class="w"> </span><span class="n">subme</span><span class="o">=</span><span class="mi">7</span><span class="w"> </span><span class="n">psy</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">psy_rd</span><span class="o">=</span><span class="mf">1.00</span><span class="p">:</span><span class="mf">0.00</span><span class="w"> </span><span class="n">mixed_ref</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">me_range</span><span class="o">=</span><span class="mi">16</span><span class="w"> </span><span class="n">chroma_me</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">trellis</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="mi">8</span><span class="n">x8dct</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">cqm</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">deadzone</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span><span class="mi">11</span><span class="w"> </span><span class="n">fast_pskip</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">chroma_qp_offset</span><span class="o">=-</span><span class="mi">2</span><span class="w"> </span><span class="n">threads</span><span class="o">=</span><span class="mi">13</span><span class="w"> </span><span class="n">lookahead_threads</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">sliced_threads</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">nr</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">decimate</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">interlaced</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">bluray_compat</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">constrained_intra</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">bframes</span><span class="o">=</span><span class="mi">3</span><span class="w"> </span><span class="n">b_pyramid</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">b_adapt</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">b_bias</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">direct</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">weightb</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">open_gop</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">weightp</span><span class="o">=</span><span class="mi">2</span><span class="w"> </span><span class="n">keyint</span><span class="o">=</span><span class="mi">250</span><span class="w"> </span><span class="n">keyint_min</span><span class="o">=</span><span class="mi">25</span><span class="w"> </span><span class="n">scenecut</span><span class="o">=</span><span class="mi">40</span><span class="w"> </span><span class="n">intra_refresh</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">rc_lookahead</span><span class="o">=</span><span class="mi">40</span><span class="w"> </span><span class="n">rc</span><span class="o">=</span><span class="n">crf</span><span class="w"> </span><span class="n">mbtree</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="n">crf</span><span class="o">=</span><span class="mf">23.0</span><span class="w"> </span><span class="n">qcomp</span><span class="o">=</span><span class="mf">0.60</span><span class="w"> </span><span class="n">qpmin</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">qpmax</span><span class="o">=</span><span class="mi">69</span><span class="w"> </span><span class="n">qpstep</span><span class="o">=</span><span class="mi">4</span><span class="w"> </span><span class="n">ip_ratio</span><span class="o">=</span><span class="mf">1.40</span><span class="w"> </span><span class="n">aq</span><span class="o">=</span><span class="mi">1</span><span class="p">:</span><span class="mf">1.00</span>
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/rtp/4.png" alt="" onclick="openLightbox(this)"></p>
+<p>This strongly suggests that the traffic is carrying H.264 video. The transport is RTP (over UDP): the first bytes of each payload match the RTP header structure, for example:</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">80</span><span class="w"> </span><span class="mf">60</span><span class="w"> </span><span class="mf">0</span><span class="n">d</span><span class="w"> </span><span class="n">b6</span><span class="w"> </span><span class="n">bf</span><span class="w"> </span><span class="mf">...</span>
+</code></pre></div>
+
+<p><code>0x80</code> indicates RTP version 2. <code>0x60</code> corresponds to payload type <code>96</code> (dynamic), which is commonly used for H.264.</p>
+<p><img class="lightbox-img" src="../images/rtp/5.png" alt="" onclick="openLightbox(this)"></p>
+<p>To confirm this in Wireshark, use the <strong>Decode As...</strong> feature:</p>
+<ul>
+<li>Right-click any packet from either UDP conversation and select <strong>Decode As...</strong></li>
+<li>Set the current decode for UDP to <strong>RTP</strong> (do this for both conversations)</li>
+</ul>
+<p><img class="lightbox-img" src="../images/rtp/6.png" alt="" onclick="openLightbox(this)"></p>
+<p>After decoding, the packet details will show RTP fields. We can also see two SSRC values, <code>0x98A3757D</code> and <code>0x0D458D99</code>, which indicates two separate RTP streams. In other words, there are two video streams in the PCAP.</p>
+<p><img class="lightbox-img" src="../images/rtp/7.png" alt="" onclick="openLightbox(this)"></p>
+<p>Each stream is sent to a different destination port (<code>5004</code> and <code>5006</code>):</p>
+<ul>
+<li>
+<p>Stream 1: SSRC <code>0x98A3757D</code> -&gt; port <code>5006</code></p>
+</li>
+<li>
+<p>Stream 2: SSRC <code>0x0D458D99</code> -&gt; port <code>5004</code></p>
+</li>
+</ul>
+<p>To extract the H.264 video streams from RTP, we need to tell Wireshark that RTP payload type <code>96</code> should be interpreted as H.264:</p>
+<ul>
+<li><strong>Edit</strong> -&gt; <strong>Preferences</strong> -&gt; <strong>Protocols</strong> -&gt; <strong>H.264</strong></li>
+<li>Set the RTP payload type to <code>96</code></li>
+</ul>
+<p><img class="lightbox-img" src="../images/rtp/8.png" alt="" onclick="openLightbox(this)"></p>
+<p>Now we can filter each stream by destination port:</p>
+<div class="codehilite"><pre><span></span><code>h264 &amp;&amp; udp.dstport == 5004
+</code></pre></div>
+
+<p>and</p>
+<div class="codehilite"><pre><span></span><code>h264 &amp;&amp; udp.dstport == 5006
+</code></pre></div>
+
+<p>Next, use <a href="https://github.com/volvet/h264extractor">volvet/h264extractor</a> to extract the raw H.264 elementary stream for each RTP flow.</p>
+<p><img class="lightbox-img" src="../images/rtp/9.png" alt="" onclick="openLightbox(this)"></p>
+<p><img class="lightbox-img" src="../images/rtp/10.png" alt="" onclick="openLightbox(this)"></p>
+<p>The output is a raw <code>.264</code> file (by default, the tool saves it under your Documents folder). You can play it with VLC, or you can convert it into MP4 using FFmpeg:</p>
+<div class="codehilite"><pre><span></span><code>ffmpeg.exe -i &lt;video.264&gt; -c copy converted.mp4
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/rtp/11.png" alt="" onclick="openLightbox(this)"></p>
+<p><img class="lightbox-img" src="../images/rtp/12.png" alt="" onclick="openLightbox(this)"></p>
+<p>For the challenge, the flag is split across the two videos. Combining both parts reveals the final flag.</p>
+        </article>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

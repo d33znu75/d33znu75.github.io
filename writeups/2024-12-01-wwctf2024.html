@@ -27,18 +27,11 @@
                 2024-12-01 | <span class="tag">Forensics</span><span class="tag">Malware</span><span class="tag">Reverse Engineering</span>
             </div>
             
-            <p>I played WWCTF and really enjoyed solving the Black Meet Wukong challenges in the forensics category (two challenges in total). As always, I managed to complete the entire category, but I’m only writing about these particular challenges because they were both difficult and enjoyable. I didn't have time to dive into the reverse engineering category, but overall, it was a great CTF.</p>
-<h2 id="challenge-1-forgot-password">Challenge 1 : Forgot Password</h2>
-<p><img class="lightbox-img" src="../images/wwctf2024/chall1.png" alt="" onclick="openLightbox(this)"> </p>
-<p>We were given a disk image, <code>Evidance.ad1</code>, and our task was to analyze it in order to retrieve the machine's security question.</p>
-<p>After opening the image file with FTK Imager, we navigated to the <code>system32/config/</code> folder, which contains the Windows Registry files. From here, we proceeded to extract the information needed to uncover the Windows security question.</p>
-<p><img class="lightbox-img" src="../images/wwctf2024/config.png" alt="" onclick="openLightbox(this)"></p>
-<p>Since we have the Registry files, we can upload them to this tool <a href="https://www.nirsoft.net/utils/security_questions_view.html">NirSoft - SecurityQuestionsView</a> that allows us to view the security questions and their corresponding answers stored in the Registry for all users. This tool simplifies the process by parsing the Registry data and presenting the security information in an accessible format.</p>
-<p><img class="lightbox-img" src="../images/wwctf2024/nirsoft.png" alt="" onclick="openLightbox(this)"></p>
-<h4 id="flag-wwfi_love_security_questions_s0_muchhhhhhhhhhhhhhhhh">FLAG : <code>wwf{I_love_security_questions_s0_muChhhhhhhhhhhhhhhhh}</code></h4>
-<h2 id="challenge-2-black-meet-wukong">Challenge 2 : Black Meet Wukong</h2>
+            <p>I played WWCTF and really enjoyed solving the Black Meet Wukong challenges in the forensics category (two challenges in total). As always, I managed to complete the entire category, but I’m only writing about this particular challenge because it demonstrates an interesting technique for data exfiltration via Telegram bots something that is used in real-world attacks. After contacting the challenge author, they confirmed it was inspired by real-world malware, especially in the East Asia region.</p>
+<p>in this write-up, I will explain how I approached and solved the challenge which involves reversing a ransomware attack that encrypts files and exfiltrates data using Telegram's Bot API and recovering the encrypted files from the Telegram bot.</p>
+<h2 id="challenge-black-meet-wukong">Challenge : Black Meet Wukong</h2>
 <p><img class="lightbox-img" src="../images/wwctf2024/chall2.png" alt="" onclick="openLightbox(this)"></p>
-<p>Continuing with the first challenge, our task now is to find the two parts of the flag. The machine system has been attacked, so let’s begin our analysis to uncover the necessary information.</p>
+<p>Our task now is to find the two parts of the flag. The machine system has been attacked, so let’s begin our analysis to uncover the necessary information.</p>
 <p>By examining the system files, we noticed that many files have the <code>.odin</code> extension added to their filenames. This is strong evidence of a ransomware attack.</p>
 <p><img class="lightbox-img" src="../images/wwctf2024/odin.png" alt="" onclick="openLightbox(this)"></p>
 <p>After conducting some analysis, I found two possible ways to trace the malware program. The first method involves examining the Microsoft Edge browser history. Specifically, in the following directory:</p>
