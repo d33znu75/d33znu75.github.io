@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cub3d: A 3D game from scratch in C using Raycasting | CTF Writeups</title>
+    <link rel="icon" type="image/png" href="../assets/cursor.png">
+    <link rel="stylesheet" href="../styles/style.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            throwOnError: false
+        });"></script>
+</head>
+<body>
+    <header>
+        <img src="../assets/title.png" alt="d33znu75 diaries">
+    </header>
+    
+    <nav class="nav-section">
+        <a href="../index.html">HOME</a>
+        <a href="../featured.html">FEATURED</a>
+    </nav>
+    
+    <div class="container">
+        <a href="../featured.html" class="back-button">← Back</a>
+        
+        <article class="writeup">
+            <h1>Cub3d: A 3D game from scratch in C using Raycasting</h1>
+            <div class="writeup-meta">
+                2026-03-21 | <span class="tag">Dev</span><span class="tag">C</span><span class="tag">Raycasting</span><span class="tag">Game Development</span>
+            </div>
+            
+            <h1 id="building-a-raycasting-3d-engine-from-scratch-in-c">Building a Raycasting 3D Engine from Scratch in C</h1>
+<p>How we turned a 2D grid into a first-person 3D world using nothing but math, a flat pixel buffer, and zero GPU shaders.</p>
+<p><img class="lightbox-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Simple_raycasting_with_fisheye_correction.gif/500px-Simple_raycasting_with_fisheye_correction.gif" alt="" onclick="openLightbox(this)"></p>
+<p>This article walks through every piece of our <strong>cub3D</strong> engine a raycaster written entirely in C. We'll cover the math, the algorithms, and the actual code that makes it work.</p>
+<p>The source code is available on my GitHub: <a href="https://github.com/d33znu75/cub3d">cub3D</a></p>
+<hr />
+<h2 id="overview-what-is-raycasting">Overview: What is Raycasting?</h2>
+<p><img class="lightbox-img" src="https://pikuma.com/images/courses/raycasting/raycasting-map.jpg" alt="" onclick="openLightbox(this)"></p>
+<p>A raycaster fakes 3D by exploiting a constraint: the world is a 2D grid, the camera can only rotate horizontally, and all walls are the same height. Under these rules, we can reduce the entire rendering problem to <strong>one ray per screen column</strong>.</p>
+<p>The rendering pipeline for every frame:</p>
+<p>Clear screen (sky/ground) → Cast 1040 rays → Find wall hits → Compute strip height → Sample texture → Draw column</p>
+<p>The game loop calls <code>update()</code> every frame:</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w">  </span><span class="nf">update</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">draw_sky_ground</span><span class="p">(</span><span class="n">all</span><span class="p">);</span><span class="w">    </span><span class="c1">// fill background</span>
+<span class="w">    </span><span class="n">cast_rays</span><span class="p">(</span><span class="n">all</span><span class="p">);</span><span class="w">          </span><span class="c1">// find all wall intersections</span>
+<span class="w">    </span><span class="n">draw_all_wall_strips</span><span class="p">(</span><span class="n">all</span><span class="p">);</span><span class="w"> </span><span class="c1">// render textured columns</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>That's the entire frame. Let's break down each step.</p>
+<hr />
+<h2 id="part-1-the-map">Part 1: The Map</h2>
+<p>The world exists as a 2D character grid. <code>1</code> means wall, <code>0</code> means empty, and a cardinal letter (<code>N</code>, <code>S</code>, <code>E</code>, <code>W</code>) marks the player spawn and initial facing direction.</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">1111111</span>
+<span class="mf">1000001</span>
+<span class="mf">100</span><span class="n">N001</span>
+<span class="mf">1111111</span>
+</code></pre></div>
+
+<blockquote>
+<p>N = Player is facing North at spawn, S = Player is facing South at spawn, E = Player is facing East at spawn, W = Player is facing West at spawn</p>
+</blockquote>
+<p>The parser reads this from a <code>.cub</code> file and stores it as a <code>char **</code> array. Each cell maps to a 1×1 unit in world space — so the player's position is a floating-point coordinate within this grid.</p>
+<p><img class="lightbox-img" src="../images/docs/fpv.png" alt="" onclick="openLightbox(this)"></p>
+<hr />
+<h2 id="part-2-casting-rays-the-dda-algorithm">Part 2: Casting Rays — The DDA Algorithm</h2>
+<p>For each of the 1040 screen columns, we cast a ray from the player. The ray angle is spread across the field of view:</p>
+<p>$$\theta_x = \theta_{player} - \frac{FOV}{2} + x \cdot \frac{FOV}{W}$$</p>
+<p>where $\theta_{player}$ is the player's current rotation angle, $FOV$ is the field of view, and $W$ is the screen width.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">ray_angle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">player</span><span class="p">.</span><span class="n">rotation_angle</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">(</span><span class="n">FOV</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w">  </span><span class="c1">// leftmost ray</span>
+<span class="c1">// for each column:</span>
+<span class="n">ray_angle</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">FOV</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">SC_WIDTH</span><span class="p">;</span><span class="w">  </span><span class="c1">// step to next column</span>
+</code></pre></div>
+
+<p>This gives us 1040 evenly-spaced rays fanning out from the player. Each ray needs to find the <strong>first wall it hits</strong>. We do this with <strong>DDA (Digital Differential Analyzer)</strong> — a grid traversal algorithm.</p>
+<p><img class="lightbox-img" src="../images/docs/raycastpng.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="why-dda">Why DDA?</h3>
+<p>A naive approach would step along the ray in tiny increments and check the grid cell at each point. This is slow and imprecise. DDA instead jumps directly from one grid boundary to the next — it only checks the exact points where the ray crosses a grid line.</p>
+<p><img class="lightbox-img" src="../images/docs/dda.png" alt="" onclick="openLightbox(this)"></p>
+<p>The key insight: we test <strong>horizontal</strong> and <strong>vertical</strong> grid crossings independently, then pick whichever wall hit is closer.</p>
+<h3 id="finding-the-first-intersection">Finding the First Intersection</h3>
+<p>When a ray leaves the player, we need to find where it first crosses a horizontal grid line and where it first crosses a vertical grid line.</p>
+<p><strong>For horizontal grid intersections</strong>, the first intersection point is:</p>
+<p>$$y_{h} = \begin{cases} \lceil P_y \rceil & \text{if ray faces down} \\ \lfloor P_y \rfloor & \text{if ray faces up} \end{cases}$$</p>
+<p>$$x_{h} = P_x + \frac{|P_y - y_h|}{\tan(\theta)}$$</p>
+<p><strong>For vertical grid intersections</strong>:</p>
+<p>$$x_{v} = \begin{cases} \lceil P_x \rceil & \text{if ray faces right} \\ \lfloor P_x \rfloor & \text{if ray faces left} \end{cases}$$</p>
+<p>$$y_{v} = P_y + |P_x - x_v| \cdot \tan(\theta)$$</p>
+<p>For the <strong>vertical</strong> first intersection (where the ray first crosses an x-integer boundary):</p>
+<div class="codehilite"><pre><span></span><code><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w">  </span><span class="nf">get_ver_intersection</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_ray</span><span class="w"> </span><span class="o">*</span><span class="n">ray</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">t_player</span><span class="w">  </span><span class="o">*</span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">;</span>
+<span class="w">    </span><span class="n">t_vector</span><span class="w">  </span><span class="n">intr_point</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">get_ver_angle_direction</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">right</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// ray faces right → next vertical line is ceil(x)</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ceil</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span>
+<span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="n">fabs</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">intr_point</span><span class="p">.</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">tan</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// ray faces left → next vertical line is floor(x)</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">floor</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span>
+<span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="n">fabs</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">intr_point</span><span class="p">.</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">tan</span><span class="p">(</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">PI</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">intr_point</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The horizontal first intersection works the same way but with x and y swapped, using <code>1/tan(θ)</code> instead of <code>tan(θ)</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w">  </span><span class="nf">get_hor_intersection</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_ray</span><span class="w"> </span><span class="o">*</span><span class="n">ray</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">t_player</span><span class="w">  </span><span class="o">*</span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">;</span>
+<span class="w">    </span><span class="n">t_vector</span><span class="w">  </span><span class="n">intr_point</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">get_hor_angle_direction</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">bottom</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ceil</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span>
+<span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="n">fabs</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">intr_point</span><span class="p">.</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">tan</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">floor</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+<span class="w">        </span><span class="n">intr_point</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span>
+<span class="w">            </span><span class="o">+</span><span class="w"> </span><span class="n">fabs</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">intr_point</span><span class="p">.</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">tan</span><span class="p">(</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">PI</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">horizontal_intersection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">intr_point</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p>Why <code>tan(2π - θ)</code>? When the ray faces the opposite direction, the delta has the wrong sign. Using <code>2π - θ</code> flips the tangent to give the correct offset in the reflected direction. It's equivalent to negating the tangent but avoids sign ambiguity near 0° and 180°.</p>
+</blockquote>
+<h3 id="stepping-through-the-grid">Stepping Through the Grid</h3>
+<p>Once we have the first intersection, we step along the grid. Each step moves exactly one grid unit along either x or y, and we compute the other coordinate using <code>tan(θ)</code>:</p>
+<ul>
+<li><strong>Vertical stepping</strong>: Increment $x$ by ±1 per step, compute $\Delta y = \text{step} \cdot \tan(\theta)$</li>
+<li><strong>Horizontal stepping</strong>: Increment $y$ by ±1 per step, compute $\Delta x = \frac{\text{step}}{\tan(\theta)}$</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w">  </span><span class="nf">get_ver_steps</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_ray</span><span class="w"> </span><span class="o">*</span><span class="n">ray</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">    </span><span class="n">delta_y</span><span class="p">;</span>
+<span class="w">    </span><span class="n">t_vector</span><span class="w">  </span><span class="n">next_coll</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">       </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">       </span><span class="n">x_step_size</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">assign_vec_to_vec</span><span class="p">(</span><span class="o">&amp;</span><span class="n">next_coll</span><span class="p">,</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// +1 if ray faces right, -1 if left</span>
+<span class="w">    </span><span class="n">get_grid_size</span><span class="p">(</span><span class="o">&amp;</span><span class="n">x_step_size</span><span class="p">,</span>
+<span class="w">        </span><span class="n">get_ver_angle_direction</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">right</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">check_if_ray_hit_ver_wall</span><span class="p">(</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">ray</span><span class="p">,</span><span class="w"> </span><span class="n">next_coll</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// step one grid unit in x, compute y offset</span>
+<span class="w">        </span><span class="n">delta_y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x_step_size</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">tan</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="p">);</span>
+<span class="w">        </span><span class="n">next_coll</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">x_step_size</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">i</span><span class="p">);</span>
+<span class="w">        </span><span class="n">next_coll</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">delta_y</span><span class="p">;</span>
+<span class="w">        </span><span class="n">i</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">next_coll</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The horizontal stepping is symmetric — step in y, compute x using <code>1/tan(θ)</code>.</p>
+<h3 id="choosing-the-closest-hit">Choosing the Closest Hit</h3>
+<p>After both checks complete, we have two candidates: the horizontal-hit point and the vertical-hit point. We pick the closer one using <strong>squared distance</strong> (avoiding an unnecessary <code>sqrt</code>):</p>
+<p>$$d^2 = (P_x - C_x)^2 + (P_y - C_y)^2$$</p>
+<div class="codehilite"><pre><span></span><code><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w">  </span><span class="nf">choose_closest_collision</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_ray</span><span class="w"> </span><span class="o">*</span><span class="n">ray</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">    </span><span class="n">vert_distance</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">    </span><span class="n">hori_distance</span><span class="p">;</span>
+<span class="w">    </span><span class="n">t_vector</span><span class="w">  </span><span class="n">player_pos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">position</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// get_line_length returns dx*dx + dy*dy (squared distance)</span>
+<span class="w">    </span><span class="n">vert_distance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_line_length</span><span class="p">(</span><span class="n">player_pos</span><span class="p">,</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="p">);</span>
+<span class="w">    </span><span class="n">hori_distance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_line_length</span><span class="p">(</span><span class="n">player_pos</span><span class="p">,</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">horizontal_intersection</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">vert_distance</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">hori_distance</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// horizontal wall was closer → N or S face</span>
+<span class="w">        </span><span class="n">get_hor_wall_strip_color</span><span class="p">(</span><span class="n">ray</span><span class="p">);</span>
+<span class="w">        </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">collision_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">horizontal_intersection</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// vertical wall was closer → E or W face</span>
+<span class="w">        </span><span class="n">get_ver_wall_strip_color</span><span class="p">(</span><span class="n">ray</span><span class="p">);</span>
+<span class="w">        </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">collision_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">vertical_intersection</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Which face was hit also determines which texture we'll use — the ray knows it hit a North, South, East, or West wall.</p>
+<hr />
+<h2 id="part-3-from-distance-to-pixels-wall-rendering">Part 3: From Distance to Pixels — Wall Rendering</h2>
+<p>We now have, for each screen column, the exact point where the ray hit a wall. The next step is converting that 3D-looking distance into a pixel-height on screen.</p>
+<h3 id="computing-wall-height">Computing Wall Height</h3>
+<p>The distance from the player to the <strong>projection plane</strong> (the imaginary screen in front of them) is a constant derived from the screen width and FOV:</p>
+<p>$$d_{proj} = \frac{W / 2}{\tan(FOV / 2)}$$</p>
+<p>We precompute this once:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">all</span><span class="o">-&gt;</span><span class="n">dist_to_proj_plane</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">SC_WIDTH</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">tan</span><span class="p">(</span><span class="n">FOV</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="p">);</span>
+</code></pre></div>
+
+<p>Then the wall strip height for a given ray is simply:</p>
+<p>$$h_{wall} = \frac{d_{proj}}{d_{\perp}}$$</p>
+<div class="codehilite"><pre><span></span><code><span class="k">static</span><span class="w"> </span><span class="kt">double</span><span class="w">  </span><span class="nf">get_wall_height</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_ray</span><span class="w"> </span><span class="o">*</span><span class="n">ray</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">  </span><span class="n">distance_to_wall</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_distance_to_wall</span><span class="p">(</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">ray</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">all</span><span class="o">-&gt;</span><span class="n">dist_to_proj_plane</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">distance_to_wall</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Closer walls → smaller denominator → taller strip. Farther walls → larger denominator → shorter strip. The relationship is inversely proportional — exactly how perspective works in real life.</p>
+<p>The strip is drawn centered vertically on screen:</p>
+<p>$$y_{start} = \frac{H - h_{wall}}{2}$$</p>
+<p>The strip is drawn centered vertically on screen:</p>
+<div class="codehilite"><pre><span></span><code>   Screen column x:
+
+   y=0  ┌──────────┐
+        │  sky     │          Upper half = ceiling color
+        │          │
+y_start ├──────────┤ ─┐
+        │          │  │
+        │ texture  │  │ h_wall pixels
+        │          │  │
+        ├──────────┤ ─┘
+        │  ground  │          Lower half = floor color
+   y=H  └──────────┘
+</code></pre></div>
+
+<h3 id="the-fish-eye-problem">The Fish-Eye Problem</h3>
+<p>If we use raw Euclidean distance, walls curve outward at the screen edges — this is the <strong>fish-eye effect</strong>. To fix it, we project the distance onto the player's forward-facing direction:</p>
+<p><img class="lightbox-img" src="../images/docs/fisheye.png" alt="" onclick="openLightbox(this)"></p>
+<p>The fix is one line of trigonometry:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">static</span><span class="w"> </span><span class="kt">double</span><span class="w">  </span><span class="nf">get_distance_to_wall</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_ray</span><span class="w"> </span><span class="o">*</span><span class="n">ray</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">  </span><span class="n">dx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">collision_point</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">  </span><span class="n">dy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">collision_point</span><span class="p">.</span><span class="n">y</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">  </span><span class="n">euclidean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">dx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">dy</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">dy</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Project onto the player&#39;s forward axis to remove fish-eye</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">euclidean</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">cos</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">ray_angle</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">rotation_angle</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The <code>cos(ray_angle - player_angle)</code> factor collapses rays at the screen edges back to their perpendicular distance, making the wall appear flat:</p>
+<p>$$d_{\perp} = d_{euclidean} \cdot \cos(\theta_{ray} - \theta_{player})$$</p>
+<hr />
+<h2 id="part-4-texture-mapping">Part 4: Texture Mapping</h2>
+<p>Flat-colored walls would be boring. We map a PNG texture onto each wall strip.</p>
+<p><img class="lightbox-img" src="../images/docs/mapped.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="which-texture-column">Which Texture Column?</h3>
+<p>When a ray hits a wall, the collision point's fractional coordinate tells us <em>where</em> on the wall face we hit. If we hit a north/south-facing wall (horizontal wall line), the x-coordinate's fractional part gives us the texture column:</p>
+<ul>
+<li><strong>N/S walls</strong> (horizontal hit): $x_{tex} = \text{fmod}(C_x, 1) \cdot W_{tex}$</li>
+<li><strong>E/W walls</strong> (vertical hit): $x_{tex} = \text{fmod}(C_y, 1) \cdot W_{tex}$</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">col_wall_color</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">N_O</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">col_wall_color</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">S_O</span><span class="p">)</span>
+<span class="w">    </span><span class="n">x_texture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fmod</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">collision_point</span><span class="p">.</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">texture</span><span class="o">-&gt;</span><span class="n">width</span><span class="p">;</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="n">x_texture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fmod</span><span class="p">(</span><span class="n">ray</span><span class="o">-&gt;</span><span class="n">collision_point</span><span class="p">.</span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">texture</span><span class="o">-&gt;</span><span class="n">width</span><span class="p">;</span>
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/docs/line_draw.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="sampling-pixels-vertically">Sampling Pixels Vertically</h3>
+<p>For each pixel row <code>i</code> in the wall strip, we compute which texture row to sample:</p>
+<p>$$y_{tex} = i \cdot \frac{H_{tex}}{h_{wall}}$$</p>
+<div class="codehilite"><pre><span></span><code><span class="n">y_txt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)((</span><span class="kt">double</span><span class="p">)</span><span class="n">texture</span><span class="o">-&gt;</span><span class="n">height</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">yPos</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">wall_height</span><span class="p">));</span>
+</code></pre></div>
+
+<p>The pixel is read directly from the raw RGBA byte array of the loaded PNG:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="p">)(</span><span class="n">texture</span><span class="o">-&gt;</span><span class="n">pixels</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">y_txt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">texture</span><span class="o">-&gt;</span><span class="n">width</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">x_txt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">4</span><span class="p">));</span>
+</code></pre></div>
+
+<p>Each pixel is 4 bytes (R, G, B, A). We index into the flat array with <code>(row * width + col) * 4</code>.</p>
+<h3 id="color-byte-swapping">Color Byte Swapping</h3>
+<p>The MLX42 library expects colors in <code>RRGGBBAA</code> format as a 32-bit integer, but the texture stores them in a different byte order. We swap red and blue channels:</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w">  </span><span class="nf">swap_red_blue</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">pixel_color</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">  </span><span class="n">red</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">  </span><span class="n">blue</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">pixel_color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">pixel_color</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">8</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="mi">255</span><span class="p">;</span><span class="w">  </span><span class="c1">// shift and set alpha</span>
+<span class="w">    </span><span class="n">red</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">pixel_color</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xFF</span><span class="p">;</span>
+<span class="w">    </span><span class="n">blue</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">pixel_color</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">8</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xFF</span><span class="p">;</span>
+<span class="w">    </span><span class="n">pixel_color</span><span class="w"> </span><span class="o">&amp;=</span><span class="w"> </span><span class="o">~</span><span class="p">(</span><span class="mh">0xFF000000</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mh">0x0000FF00</span><span class="p">);</span><span class="w">    </span><span class="c1">// clear R and B</span>
+<span class="w">    </span><span class="n">pixel_color</span><span class="w"> </span><span class="o">|=</span><span class="w"> </span><span class="p">(</span><span class="n">blue</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="n">red</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span><span class="w">     </span><span class="c1">// swap them</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">pixel_color</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p>Why swap? PNG files store pixels as RGBA bytes in memory. When we cast those bytes to an <code>int</code>, endianness determines the order. On little-endian systems (x86), the bytes appear reversed. The swap function corrects this so the MLX42 pixel buffer gets the right color channels.</p>
+</blockquote>
+<p><img class="lightbox-img" src="../images/docs/texture.png" alt="" onclick="openLightbox(this)"></p>
+<hr />
+<h2 id="part-5-player-movement-collision">Part 5: Player Movement &amp; Collision</h2>
+<h3 id="vector-based-movement">Vector-Based Movement</h3>
+<p>Movement is computed from the player's facing angle. The movement vector is:</p>
+<p>$$\vec{v} = \begin{pmatrix} \cos(\theta) \cdot speed \\ \sin(\theta) \cdot speed \end{pmatrix}$$</p>
+<div class="codehilite"><pre><span></span><code><span class="n">t_vector</span><span class="w">  </span><span class="nf">get_player_end_of_sight_stack</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">dist</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">t_vector</span><span class="w">  </span><span class="n">end_of_sight</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">end_of_sight</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cos</span><span class="p">(</span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">rotation_angle</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">dist</span><span class="p">;</span>
+<span class="w">    </span><span class="n">end_of_sight</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sin</span><span class="p">(</span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">rotation_angle</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">dist</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">end_of_sight</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>This gives a direction vector scaled by the movement speed. For <strong>strafing</strong> (moving sideways), we temporarily rotate the player's angle by 90° before computing the vector, then restore it:</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w">  </span><span class="nf">move_player</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">double</span><span class="w">  </span><span class="n">player_original_rotation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">player</span><span class="p">.</span><span class="n">rotation_angle</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">walk_direction</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">WALK_RIGHT</span><span class="p">)</span>
+<span class="w">        </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">rotation_angle</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">HALF_PI</span><span class="p">;</span><span class="w">        </span><span class="c1">// +90°</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">walk_direction</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">WALK_LEFT</span><span class="p">)</span>
+<span class="w">        </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">rotation_angle</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">HALF_PI</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">PI</span><span class="p">;</span><span class="w">   </span><span class="c1">// +270° (≡ -90°)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">walk_direction</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">WALK_BACK</span><span class="p">)</span>
+<span class="w">        </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">rotation_angle</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">PI</span><span class="p">;</span><span class="w">             </span><span class="c1">// +180°</span>
+
+<span class="w">    </span><span class="n">t_vector</span><span class="w"> </span><span class="n">vec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_player_end_of_sight_stack</span><span class="p">(</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">MOVE_SPEED</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">check_player_collision</span><span class="p">(</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">vec</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">vec</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<span class="w">        </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">vec</span><span class="p">.</span><span class="n">y</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">rotation_angle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">player_original_rotation</span><span class="p">;</span><span class="w">  </span><span class="c1">// restore</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><img class="lightbox-img" src="../images/docs/mov.png" alt="" onclick="openLightbox(this)"></p>
+<h3 id="wall-collision-detection">Wall Collision Detection</h3>
+<p>Before applying the movement, we check if the destination cell is a wall:</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w">  </span><span class="nf">check_if_a_wall</span><span class="p">(</span><span class="n">t_all</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">,</span><span class="w"> </span><span class="n">t_vector</span><span class="w"> </span><span class="n">to_check</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">  </span><span class="n">my_x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">to_check</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">  </span><span class="n">my_y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">to_check</span><span class="p">.</span><span class="n">y</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">my_x</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">my_y</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">        </span><span class="o">||</span><span class="w"> </span><span class="n">my_x</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">map_width</span>
+<span class="w">        </span><span class="o">||</span><span class="w"> </span><span class="n">my_y</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">all</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">map_height</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w">  </span><span class="c1">// out of bounds = wall</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">all</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">map_copy</span><span class="p">[</span><span class="n">my_y</span><span class="p">][</span><span class="n">my_x</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;1&#39;</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w">  </span><span class="c1">// wall cell</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The position (floating-point) is truncated to grid coordinates. If the target cell is <code>'1'</code> or out of bounds, the move is rejected and the player stays in place.</p>
+<hr />
+<h2 id="part-6-putting-it-all-together">Part 6: Putting It All Together</h2>
+<p>The complete rendering flow for one frame:</p>
+<p><strong>1. Clear the screen</strong> — Draw ceiling color on the top half, floor color on the bottom half.</p>
+<p><strong>2. Cast 1040 rays</strong> — For each screen column, calculate ray angle, find horizontal and vertical grid intersections using DDA, pick the closer hit.</p>
+<p><strong>3. Compute wall height</strong> — Correct for fish-eye using cosine projection, compute the strip height from the projection plane distance.</p>
+<p><strong>4. Draw textured strip</strong> — Sample the correct texture column and row for each pixel, swap byte order, draw to the pixel buffer.</p>
+<p>The entire frame is drawn to a single <code>mlx_image_t</code> pixel buffer, which MLX42 uploads to the GPU for display. No 3D graphics API, no shaders, no triangles — just math and a flat array of pixels.</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w">  </span><span class="nf">update</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">all</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">draw_sky_ground</span><span class="p">(</span><span class="n">all</span><span class="p">);</span>
+<span class="w">    </span><span class="n">cast_rays</span><span class="p">(</span><span class="n">all</span><span class="p">);</span>
+<span class="w">    </span><span class="n">draw_all_wall_strips</span><span class="p">(</span><span class="n">all</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Three function calls. One frame. 60 times per second.</p>
+<h2 id="demo">Demo</h2>
+<p><img class="lightbox-img" src="../images/docs/demo.gif" alt="" onclick="openLightbox(this)"></p>
+<hr />
+<h2 id="credits">Credits</h2>
+<p>This project was developed by <a href="https://github.com/d33znu75">@d33znu75</a> and <a href="https://github.com/islamimehdi">@islamimehdi</a> as part of the 42 curriculum in 1337 School.</p>
+        </article>
+
+        <!-- Comment Section -->
+        <div class="homepage-intro">
+            <div class="homepage-intro-right" style="flex-grow: 1; width: 100%;">
+                <h2>Leave a Comment</h2>
+                <script src="https://giscus.app/client.js"
+                        data-repo="d33znu75/d33znu75.github.io"
+                        data-repo-id="R_kgDOQt8QAQ"
+                        data-category="General"
+                        data-category-id="DIC_kwDOQt8QAc4C0TAw"
+                        data-mapping="pathname"
+                        data-strict="0"
+                        data-reactions-enabled="1"
+                        data-emit-metadata="0"
+                        data-input-position="bottom"
+                        data-theme="preferred_color_scheme"
+                        data-lang="en"
+                        crossorigin="anonymous"
+                        async>
+                </script>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="" alt="">
+    </div>
+    
+    <script>
+    function openLightbox(imgElement) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        lightboxImg.src = imgElement.src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close lightbox when clicking outside the image
+    document.addEventListener('DOMContentLoaded', function() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.addEventListener('click', function(event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    });
+    
+    // Close lightbox with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+    });
+    </script>
+</body>
+</html>

